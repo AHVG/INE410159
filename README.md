@@ -32,7 +32,7 @@ pip install opencv-python matplotlib numpy
 ## Uso
 
 ```bash
-MPLBACKEND=Agg python3 relatorio_embauba.py
+MPLBACKEND=Agg python3 main.py
 ```
 
 Gera em `output/`:
@@ -44,5 +44,8 @@ Gera em `output/`:
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `embaubaHSVmask.py` | Script base original (referência) |
-| `relatorio_embauba.py` | Pipeline completo com processamento paralelo e relatório |
+| `embaubaHSVmask.py` | Script base original (referência — não modificar) |
+| `deteccao.py` | Algoritmos de visão computacional |
+| `execucao.py` | Processamento paralelo + checkpoint |
+| `estatisticas.py` | Figuras e relatório Markdown |
+| `main.py` | Ponto de entrada |

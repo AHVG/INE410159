@@ -8,12 +8,17 @@ Detecção de árvores **Cecropia (Embaúba)** em mosaico aéreo usando visão c
 
 ```
 .
-├── embaubaHSVmask.py       # Script base original — NÃO MODIFICAR
-├── relatorio_embauba.py    # Pipeline completo + relatório
-├── tiles/                  # 992 tiles JPEG 2048×2048 px
+├── embaubaHSVmask.py   # Script base original — NÃO MODIFICAR
+├── main.py             # Ponto de entrada — orquestra os módulos
+├── deteccao.py         # Algoritmos de visão computacional (HSV, morfologia, hull)
+├── execucao.py         # Processamento paralelo + gerenciador de checkpoint
+├── estatisticas.py     # Figuras estatísticas + relatório Markdown
+├── tiles/              # 992 tiles JPEG 2048×2048 px
 │   └── metadados_tiles.json
-└── output/                 # Gerado pelo pipeline (ignorado no git)
+└── output/             # Gerado pelo pipeline (ignorado no git)
     ├── passo_a_passo/      # 1 PNG por tile com 8 etapas do pipeline
+    ├── checkpoints/        # Histórico de runs arquivadas
+    ├── checkpoint_latest.json
     ├── hist_deteccoes_por_tile.png
     ├── hist_areas_deteccao.png
     ├── top10_tiles.png
@@ -44,7 +49,7 @@ Detecção de árvores **Cecropia (Embaúba)** em mosaico aéreo usando visão c
 ## Como Executar
 
 ```bash
-MPLBACKEND=Agg python3 relatorio_embauba.py
+MPLBACKEND=Agg python3 main.py
 ```
 
 Requer: `opencv-python`, `matplotlib`, `numpy`.
