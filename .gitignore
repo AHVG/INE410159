@@ -1,0 +1,13 @@
+# Saídas geradas pelo pipeline
+output/*
+!output/.gitkeep
+
+# Tiles (imagens ~1.5 GB)
+# Download: https://drive.google.com/drive/folders/1Gux57VofI_bxgt66hlXgaVlp_s21emNl
+tiles/*
+!tiles/.gitkeep
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
