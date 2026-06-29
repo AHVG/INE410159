@@ -19,7 +19,8 @@ from .deteccao import (
     AREA_MIN,
     AREA_GRANDE,
     CIRC_MAX,
-    candidato_eh_embauba,
+    AREA_MAX,
+    SOL_MIN,
 )
 
 
@@ -81,7 +82,13 @@ def _pct(num: float, den: float) -> float:
 
 
 def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
-    """Calcula métricas dos JSONs revisados de validação."""
+    """Métricas do detector a partir dos JSONs revisados de validação.
+
+    Cada JSON traz `embaubas` (saída do detector), `falsos_positivos` (índices das
+    detecções que o revisor marcou como erro) e `faltantes` (copas que o detector
+    não pegou). As métricas somam apenas os tiles revisados:
+        TP = detecções confirmadas;  FP = falsos positivos;  FN = faltantes.
+    """
     jsons = sorted(
         os.path.join(raiz, nome)
         for raiz, _, nomes in os.walk(validacao_dir)
@@ -89,52 +96,28 @@ def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
         if nome.endswith(".json")
     ) if os.path.exists(validacao_dir) else []
 
-    revisados = candidatos_tp = candidatos_fp = faltantes = 0
-    final_tp = final_fp = final_tn = final_fn_rejeitados = 0
-
+    revisados = tp = fp = fn = 0
     for path in jsons:
         with open(path, encoding="utf-8") as f:
             meta = json.load(f)
-        revisados += int(meta.get("revisado", False))
-        faltantes += len(meta.get("faltantes", []))
-        for det in meta.get("deteccoes", []):
-            real_embauba = det.get("label") == "embauba"
-            pred_embauba = candidato_eh_embauba(det)
-            if real_embauba:
-                candidatos_tp += 1
-            else:
-                candidatos_fp += 1
+        if not meta.get("revisado", False):
+            continue
+        revisados += 1
+        n_det = len(meta.get("embaubas", []))
+        n_fp = len(meta.get("falsos_positivos", []))
+        fp += n_fp
+        tp += n_det - n_fp
+        fn += len(meta.get("faltantes", []))
 
-            if pred_embauba and real_embauba:
-                final_tp += 1
-            elif pred_embauba and not real_embauba:
-                final_fp += 1
-            elif not pred_embauba and real_embauba:
-                final_fn_rejeitados += 1
-            else:
-                final_tn += 1
-
-    candidatos_fn = faltantes
-    final_fn_total = final_fn_rejeitados + faltantes
     return {
         "jsons": len(jsons),
         "revisados": revisados,
-        "candidatos_total": candidatos_tp + candidatos_fp,
-        "candidatos_tp": candidatos_tp,
-        "candidatos_fp": candidatos_fp,
-        "candidatos_fn": candidatos_fn,
-        "candidatos_precisao": _pct(candidatos_tp, candidatos_tp + candidatos_fp),
-        "candidatos_recall": _pct(candidatos_tp, candidatos_tp + candidatos_fn),
-        "candidatos_f1": _pct(2 * candidatos_tp, 2 * candidatos_tp + candidatos_fp + candidatos_fn),
-        "final_tp": final_tp,
-        "final_fp": final_fp,
-        "final_tn": final_tn,
-        "final_fn_rejeitados": final_fn_rejeitados,
-        "final_fn_faltantes": faltantes,
-        "final_fn_total": final_fn_total,
-        "final_precisao": _pct(final_tp, final_tp + final_fp),
-        "final_recall": _pct(final_tp, final_tp + final_fn_total),
-        "final_f1": _pct(2 * final_tp, 2 * final_tp + final_fp + final_fn_total),
+        "tp": tp,
+        "fp": fp,
+        "fn": fn,
+        "precisao": _pct(tp, tp + fp),
+        "recall": _pct(tp, tp + fn),
+        "f1": _pct(2 * tp, 2 * tp + fp + fn),
     }
 
 
@@ -269,10 +252,10 @@ distorcer as estatísticas.
 
 O conjunto de validação fica em `data/validacao/`, com uma subpasta por imagem
 revisada (`<nome>.jpg`, `<nome>.json`, `<nome>_vis.png`). Atualmente há
-{validacao['jsons']} JSONs de validação, todos revisados manualmente
-({validacao['revisados']}/{validacao['jsons']}). Cada JSON armazena candidatos rotulados como
-`embauba` ou `lixo`, além de caixas `faltantes` para copas visíveis que não
-viraram candidato.
+{validacao['jsons']} JSONs de validação, {validacao['revisados']} revisados
+manualmente. Cada JSON armazena a saída do detector (`embaubas`), os índices
+marcados como falso positivo na revisão (`falsos_positivos`) e caixas `faltantes`
+para copas que o detector não pegou.
 
 ## 3. Pipeline
 
@@ -285,7 +268,7 @@ viraram candidato.
 | 5. Abertura morfológica | remove componentes pequenos | reduz respingos de ruído após o fechamento | elipse {OPEN_SIZE}×{OPEN_SIZE} |
 | 6. Detecção de contornos | extrai regiões conectadas | transforma a máscara em candidatos | `RETR_EXTERNAL`, `CHAIN_APPROX_SIMPLE` |
 | 7. Filtro de área | descarta regiões pequenas | remove manchas muito menores que uma copa | área > {AREA_MIN:,} px² |
-| 8. Filtro final | classifica candidatos como embaúba | reduz falsos positivos por área/circularidade | área ≥ {AREA_GRANDE:,} ou circularidade ≤ {CIRC_MAX} |
+| 8. Filtro final | classifica candidatos como embaúba | reduz falsos positivos por forma e tamanho | (área ≥ {AREA_GRANDE:,} ou circ ≤ {CIRC_MAX}) e área ≤ {AREA_MAX:,} e solidez ≥ {SOL_MIN} |
 | 9. Convex Hull | aproxima a copa para desenho/exportação | contorno mais estável para visualização e bounds | `cv2.convexHull` |
 
 ## 4. Resultados
@@ -316,31 +299,25 @@ viraram candidato.
 
 ### Validação manual
 
-A validação foi feita em duas camadas. Primeiro avalia-se a etapa de geração de
-candidatos, isto é, tudo que passou pela segmentação HSV, morfologia e filtro de
-área mínima. Em seguida avalia-se o filtro final de área/circularidade, que é a
-saída efetiva do detector.
+A validação compara a saída do detector com a revisão manual de
+{validacao['revisados']}/{validacao['jsons']} tiles. Na revisão, cada detecção é
+confirmada como embaúba ou marcada como falso positivo, e as copas que o detector
+não pegou são anotadas como faltantes.
 
-| Métrica | Camada de candidatos | Filtro final |
-|---------|----------------------|--------------|
-| Verdadeiros positivos | {validacao['candidatos_tp']} | {validacao['final_tp']} |
-| Falsos positivos | {validacao['candidatos_fp']} | {validacao['final_fp']} |
-| Verdadeiros negativos | — | {validacao['final_tn']} |
-| Falsos negativos por candidato rejeitado | — | {validacao['final_fn_rejeitados']} |
-| Falsos negativos por faltante | {validacao['candidatos_fn']} | {validacao['final_fn_faltantes']} |
-| Falsos negativos totais | {validacao['candidatos_fn']} | {validacao['final_fn_total']} |
-| Precisão | {validacao['candidatos_precisao']:.1f}% | {validacao['final_precisao']:.1f}% |
-| Recall | {validacao['candidatos_recall']:.1f}% | {validacao['final_recall']:.1f}% |
-| F1 | {validacao['candidatos_f1']:.1f}% | {validacao['final_f1']:.1f}% |
+| Métrica | Valor |
+|---------|-------|
+| Tiles revisados | {validacao['revisados']}/{validacao['jsons']} |
+| Verdadeiros positivos (TP) | {validacao['tp']} |
+| Falsos positivos (FP) | {validacao['fp']} |
+| Falsos negativos / faltantes (FN) | {validacao['fn']} |
+| Precisão | {validacao['precisao']:.1f}% |
+| Recall | {validacao['recall']:.1f}% |
+| F1 | {validacao['f1']:.1f}% |
 
-Na camada de candidatos, o objetivo é preservar copas possíveis mesmo aceitando
-muitos objetos de vegetação parecidos. Por isso a precisão inicial é baixa. O
-filtro final rejeitou {validacao['final_tn']} dos {validacao['candidatos_fp']}
-candidatos marcados como `lixo`, reduzindo falsos positivos de
-{validacao['candidatos_fp']} para {validacao['final_fp']}. Em contrapartida,
-{validacao['final_fn_rejeitados']} embaúbas candidatas foram rejeitadas pelo
-filtro e {validacao['final_fn_faltantes']} embaúbas ficaram fora da camada de
-candidatos.
+A precisão mede quantas das detecções são realmente embaúba (o filtro de forma e
+tamanho remove a maior parte das palmeiras), e o recall mede quantas das copas
+reais o detector encontrou — o complemento são as `faltantes` que a segmentação
+HSV não chegou a produzir.
 
 ### Figuras geradas
 
@@ -357,12 +334,12 @@ candidatos.
 ## 5. Conclusão
 
 O pipeline processou {n} tiles válidos e encontrou {total_det:,} regiões
-classificadas como embaúba. Na validação manual, o filtro final atingiu
-{validacao['final_precisao']:.1f}% de precisão e {validacao['final_recall']:.1f}%
-de recall, mostrando que a camada de rejeição de `lixo` remove a maior parte
-dos falsos positivos da etapa de candidatos. O método é direto e auditável: as
-figuras de passo a passo permitem inspecionar as representações intermediárias
-dos tiles selecionados.
+classificadas como embaúba. Na validação manual de {validacao['revisados']} tiles,
+o detector atingiu {validacao['precisao']:.1f}% de precisão e
+{validacao['recall']:.1f}% de recall, mostrando que o filtro de forma e tamanho
+remove a maior parte dos falsos positivos (palmeiras). O método é direto e
+auditável: as figuras de passo a passo permitem inspecionar as representações
+intermediárias dos tiles selecionados.
 
 As principais limitações são falsos positivos em vegetação com cor semelhante,
 sensibilidade a iluminação/sombra e duplicação possível por sobreposição entre

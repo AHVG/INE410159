@@ -1,46 +1,12 @@
 {
   "tile": "tile_0555.jpg",
   "revisado": true,
-  "deteccoes": [
-    {
-      "id": 1,
-      "label": "lixo",
-      "bbox": [
-        583,
-        1688,
-        128,
-        206
-      ],
-      "area": 11940.0,
-      "circular": 0.2713,
-      "fill": 0.1939
-    },
-    {
-      "id": 2,
-      "label": "lixo",
-      "bbox": [
-        922,
-        776,
-        151,
-        138
-      ],
-      "area": 11803.5,
-      "circular": 0.6238,
-      "fill": 0.4773
-    },
-    {
-      "id": 3,
-      "label": "lixo",
-      "bbox": [
-        1244,
-        579,
-        275,
-        210
-      ],
-      "area": 22189.0,
-      "circular": 0.2433,
-      "fill": 0.2331
-    }
-  ],
+  "embaubas": [],
+  "n_candidatos": 3,
+  "n_deteccoes": 0,
+  "coverage_pct": 5.62593936920166,
+  "tempo_s": 0.1942765712738037,
+  "memoria_mb": 64.07682991027832,
+  "falsos_positivos": [],
   "faltantes": []
 }

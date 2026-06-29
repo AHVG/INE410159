@@ -29,33 +29,20 @@ AREA_MIN:    int                = 10_000
 #   - copa de embaúba é grande ou espalhada/irregular → circularidade baixa
 # (a densidade na máscara bruta, `fill`, foi testada e descartada: não separa.)
 #
-# Limiares de PRODUÇÃO: forma 'área OU circ', escolhida por validação e
-# reajustada nos 153 rótulos originais, hoje consolidados em data/validacao/.
-# No conjunto de validação, melhora a precisão em relação ao baseline área>10000.
+# Limiares de PRODUÇÃO, escolhidos/validados nos 153 rótulos de data/validacao/.
+# A decisão é: forma ('área grande OU pouco circular') E dentro de uma faixa de
+# tamanho/solidez plausível. Cada termo foi medido no conjunto de validação:
+#   - AREA_GRANDE / CIRC_MAX: o núcleo do filtro (precisão 0.73 vs 0.25 do
+#     baseline área>10000).
+#   - AREA_MAX: teto que descarta blobs fundidos gigantes, maiores que qualquer
+#     copa real (ganho de precisão sem custo de recall).
+#   - SOL_MIN: solidez (área_contorno / área_hull) mínima; descarta copas "ralas"
+#     que vazam o filtro de forma. Em validação cruzada leave-one-tile-out o
+#     limiar 0.48 foi estável (16/18 folds) e elevou a precisão para ~0.81.
 AREA_GRANDE: int   = 33_798
 CIRC_MAX:    float = 0.1551
-
-
-def eh_embauba(c: np.ndarray) -> bool:
-    """Decide se um contorno corresponde a uma copa de embaúba (e não a lixo).
-
-    O contorno é aceito quando é grande (`AREA_GRANDE`) ou pouco circular
-    (`CIRC_MAX`). Isso descarta os centros de palmeira, que são pequenos e
-    compactos/circulares, enquanto as copas de embaúba são grandes ou
-    espalhadas e irregulares.
-
-    Args:
-        c: Contorno retornado por `cv2.findContours` (array de pontos).
-
-    Returns:
-        ``True`` se o contorno deve ser contado como embaúba.
-    """
-    area = cv2.contourArea(c)
-    if area <= AREA_MIN:
-        return False
-    peri = cv2.arcLength(c, True)
-    circular = 4 * np.pi * area / (peri * peri) if peri else 0
-    return area >= AREA_GRANDE or circular <= CIRC_MAX
+AREA_MAX:    int   = 600_000
+SOL_MIN:     float = 0.48
 
 
 def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
@@ -77,6 +64,7 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
             continue
         hull = cv2.convexHull(c)
         peri = cv2.arcLength(c, True)
+        harea = cv2.contourArea(hull)
         x, y, w, h = cv2.boundingRect(hull)
         canvas = np.zeros(mask_bruta.shape, np.uint8)
         cv2.drawContours(canvas, [hull], -1, 255, -1)
@@ -87,6 +75,7 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
             "area": round(float(area), 1),
             "circular": round(4 * np.pi * area / (peri * peri), 4) if peri else 0.0,
             "fill": round(fill, 4),
+            "solidity": round(float(area / harea), 4) if harea else 0.0,
             "bbox": [int(x), int(y), int(w), int(h)],
             "hull": hull,
         })
@@ -103,18 +92,41 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
 
 
 def candidato_eh_embauba(candidato: dict[str, Any]) -> bool:
-    """Decide se um candidato extraído pelo pipeline base é embaúba."""
-    return candidato["area"] >= AREA_GRANDE or candidato["circular"] <= CIRC_MAX
+    """Decide se um candidato extraído pelo pipeline base é embaúba.
 
-
-def extrair_candidatos(img_bgr: np.ndarray) -> list[dict[str, Any]]:
-    """Extrai candidatos do pipeline base, antes do filtro final `eh_embauba`.
-
-    Retorna uma entrada por contorno com área > `AREA_MIN`, incluindo features
-    usadas na validação manual (`area`, `circular`, `fill`, `bbox`) e o `hull`
-    para desenhar overlays.
+    Aceita quando o candidato tem a forma de copa (grande **ou** pouco circular)
+    e está dentro da faixa de tamanho/solidez plausível: abaixo de `AREA_MAX`
+    (descarta blobs fundidos gigantes) e com solidez ≥ `SOL_MIN` (descarta copas
+    ralas). O ``get('solidity', 1.0)`` mantém compatível qualquer dict antigo sem
+    a feature, tratando-o como sólido.
     """
-    return _pipeline_base(img_bgr)["candidatos"]
+    forma = candidato["area"] >= AREA_GRANDE or candidato["circular"] <= CIRC_MAX
+    return (forma
+            and candidato["area"] <= AREA_MAX
+            and candidato.get("solidity", 1.0) >= SOL_MIN)
+
+
+def detectar_para_validacao(img_bgr: np.ndarray) -> list[dict[str, Any]]:
+    """Detecções já rotuladas (embauba/lixo) para a UI de anotação manual.
+
+    Usa a mesma extração e classificação do pipeline canônico (`detectar`), mas
+    preserva os candidatos rejeitados como 'lixo' para que possam ser revistos e
+    corrigidos na UI. Cada entrada traz `id`, `label` e as features de validação
+    (`bbox`, `area`, `circular`, `fill`, `solidity`). É a única fonte das
+    detecções iniciais da validação — `anotar.py` não reimplementa essa lógica.
+    """
+    return [
+        {
+            "id":       i,
+            "label":    "embauba" if candidato_eh_embauba(c) else "lixo",
+            "bbox":     c["bbox"],
+            "area":     c["area"],
+            "circular": c["circular"],
+            "fill":     c["fill"],
+            "solidity": c["solidity"],
+        }
+        for i, c in enumerate(_pipeline_base(img_bgr)["candidatos"], 1)
+    ]
 
 
 def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
@@ -162,8 +174,8 @@ def detectar_embaubas(img_bgr: np.ndarray) -> list[dict[str, Any]]:
     """Detecta embaúbas numa imagem e devolve os bounds, serializáveis em JSON.
 
     É a saída canônica do pipeline: uma entrada por copa detectada (já depois do
-    filtro `eh_embauba`). Consumida tanto pela avaliação (comparar com o esperado)
-    quanto pela execução em produção.
+    filtro `candidato_eh_embauba`). Consumida tanto pela avaliação (comparar com
+    o esperado) quanto pela execução em produção.
 
     Args:
         img_bgr: Imagem carregada pelo OpenCV no formato BGR.

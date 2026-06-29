@@ -1,226 +1,110 @@
-"""UI simples (OpenCV) para revisar a anotação da validação.
+"""Adiciona e anota um tile na revisão de validação.
 
-Mostra as detecções do algoritmo sobre o tile e deixa o usuário **corrigir os
-rótulos** (embaúba/lixo) e **desenhar caixas** sobre embaúbas que o algoritmo não
-detectou. Salva no próprio JSON da validação (alimentando a avaliação espacial).
+`adicionar_revisao` roda o algoritmo no tile e grava, em `data/validacao/<tile>/`,
+um JSON praticamente igual à saída do algoritmo (`core.deteccao.analisar`) com a
+flag `revisado`. A janela de anotação (OpenCV) deixa o usuário **corrigir** essa
+saída sobre o esquema "só detecções":
+
+    - clicar numa detecção  → marca como FALSO POSITIVO (vermelho); clicar de novo
+      desfaz. Vira o índice em `falsos_positivos`.
+    - arrastar em área vazia → desenha uma embaúba FALTANTE (azul) que o algoritmo
+      não pegou. Vira uma entrada em `faltantes`.
+
+O `embaubas` (saída crua do algoritmo) não é alterado; as correções ficam em
+`falsos_positivos` e `faltantes`, então dá pra recuperar TP/FP/FN:
+    TP = len(embaubas) - len(falsos_positivos)
+    FP = len(falsos_positivos)
+    FN = len(faltantes)
 
 Uso::
 
-    python3 src/anotar.py tile_0905
-    python3 src/anotar.py data/validacao/tile_0905/tile_0905.json
-    python3 src/anotar.py caminho/nova_imagem.jpg
-    python3 src/anotar.py data/validacao --pendentes
+    python3 src/anotar.py tile_0053            # cria se faltar e abre a janela
+    python3 src/anotar.py caminho/img.jpg
+    python3 src/anotar.py tile_0053 --refazer  # recria o JSON do algoritmo e abre
 
 Controles:
-    clique numa caixa        alterna embaúba (verde) / lixo (vermelho)
+    clique numa detecção     alterna falso positivo (verde ↔ vermelho)
     arrastar em área vazia   desenha caixa de embaúba faltante (azul)
     clique direito           remove a caixa faltante sob o cursor
     u                        desfaz a última faltante
-    s                        salva (marca revisado) e avança
-    n                        pula sem salvar
-    q / ESC                  encerra sem salvar o tile atual
+    s                        salva (marca revisado) e fecha
+    q / ESC                  encerra sem salvar
 """
 
-import os
-import sys
-import json
 import argparse
+import json
+import os
 import shutil
-from datetime import datetime
+import sys
 from typing import Any
 
 import cv2
 
-from core.deteccao import candidato_eh_embauba, extrair_candidatos
+from core.deteccao import analisar
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 VALIDACAO_DIR: str = os.path.join(_ROOT, "data", "validacao")
+TILES_DIRS: tuple[str, ...] = (os.path.join(_ROOT, "tiles"), os.path.join(_ROOT, "data", "tiles"))
+EXTS: tuple[str, ...] = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
 MAX_LADO: int = 900  # maior lado da janela (o tile 2048² é reduzido para caber)
 
 VERDE = (0, 200, 0); VERMELHO = (0, 0, 255); AZUL = (255, 0, 0); AMARELO = (0, 220, 220)
 FONT = cv2.FONT_HERSHEY_SIMPLEX
-EXTS: tuple[str, ...] = (".jpg", ".jpeg", ".png", ".tif", ".tiff")
 
 
-def salvar_overlay(img_bgr: Any, json_path: str, meta: dict[str, Any],
-                   candidatos: list[dict[str, Any]] | None = None) -> None:
-    """Salva o overlay `_vis.png` da validação."""
-    vis = img_bgr.copy()
-    por_id = {i + 1: d for i, d in enumerate(candidatos or [])}
-    for d in meta["deteccoes"]:
-        cor = VERDE if d["label"] == "embauba" else VERMELHO
-        x, y = d["bbox"][0], d["bbox"][1]
-        if d["id"] in por_id:
-            cv2.drawContours(vis, [por_id[d["id"]]["hull"]], -1, cor, 4)
-        else:
-            bx, by, bw, bh = d["bbox"]
-            cv2.rectangle(vis, (bx, by), (bx + bw, by + bh), cor, 4)
-        cv2.putText(vis, f"#{d['id']} {d['label']}", (x, max(0, y - 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.1, cor, 3)
-    for fa in meta.get("faltantes", []):
-        fx, fy, fw, fh = fa["bbox"]
-        cv2.rectangle(vis, (fx, fy), (fx + fw, fy + fh), AZUL, 4)
-        cv2.putText(vis, "faltante", (fx, max(0, fy - 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 1.1, AZUL, 3)
-    base = os.path.splitext(os.path.basename(json_path))[0]
-    cv2.imwrite(os.path.join(os.path.dirname(json_path), f"{base}_vis.png"), vis)
+def resolver_imagem(ref: str) -> str:
+    """Resolve `ref` (caminho de imagem ou nome de tile) para o caminho da imagem."""
+    if os.path.isfile(ref):
+        return ref
+    nome = ref if ref.lower().endswith(EXTS) else ref + ".jpg"
+    for d in TILES_DIRS:
+        p = os.path.join(d, nome)
+        if os.path.isfile(p):
+            return p
+    print(f"[ERRO] imagem não encontrada para '{ref}'.")
+    sys.exit(1)
 
 
-def criar_validacao_imagem(caminho_img: str, sobrescrever: bool = False) -> str:
-    """Copia uma imagem para `data/validacao/<tile>/` e cria seu JSON inicial."""
+def adicionar_revisao(caminho_img: str) -> str:
+    """Cria o JSON de revisão do tile: saída do algoritmo + flag `revisado`."""
     img = cv2.imread(caminho_img)
     if img is None:
         print(f"[ERRO] imagem não pôde ser lida: '{caminho_img}'.")
         sys.exit(1)
 
-    os.makedirs(VALIDACAO_DIR, exist_ok=True)
     nome = os.path.basename(caminho_img)
-    base, ext = os.path.splitext(nome)
-    if ext.lower() not in EXTS:
-        print(f"[ERRO] extensão de imagem não suportada: '{ext}'.")
-        sys.exit(1)
-
+    base = os.path.splitext(nome)[0]
     tile_dir = os.path.join(VALIDACAO_DIR, base)
     os.makedirs(tile_dir, exist_ok=True)
-    dst_img = os.path.join(tile_dir, nome)
-    json_path = os.path.join(tile_dir, base + ".json")
-    if os.path.exists(json_path) and not sobrescrever:
-        return json_path
 
+    dst_img = os.path.join(tile_dir, nome)
     if os.path.abspath(caminho_img) != os.path.abspath(dst_img):
         shutil.copy(caminho_img, dst_img)
 
-    candidatos = extrair_candidatos(img)
-    deteccoes = []
-    for i, d in enumerate(candidatos, 1):
-        label = "embauba" if candidato_eh_embauba(d) else "lixo"
-        deteccoes.append({
-            "id": i,
-            "label": label,
-            "bbox": d["bbox"],
-            "area": d["area"],
-            "circular": d["circular"],
-            "fill": d["fill"],
-        })
-    meta = {
-        "tile": nome,
-        "revisado": False,
-        "deteccoes": deteccoes,
-        "faltantes": [],
-    }
+    meta = {"tile": nome, "revisado": False, **analisar(img)}
+    json_path = os.path.join(tile_dir, base + ".json")
     with open(json_path, "w", encoding="utf-8") as f:
         json.dump(meta, f, indent=2, ensure_ascii=False)
-    salvar_overlay(img, json_path, meta, candidatos)
-    print(f"[OK] validação criada: {json_path} ({len(deteccoes)} candidatos)")
+    salvar_overlay(img, json_path, meta)
+    print(f"[OK] revisão criada: {json_path} ({meta['n_deteccoes']} detecções)")
     return json_path
 
 
-def resolver_json(ref: str, sobrescrever: bool = False) -> str:
-    """Resolve a referência de um tile (.json, .jpg, nome ou caminho) para o JSON."""
-    if os.path.isfile(ref) and ref.lower().endswith(EXTS):
-        json_path = os.path.splitext(ref)[0] + ".json"
-        if os.path.exists(json_path):
-            return json_path
-        return criar_validacao_imagem(ref, sobrescrever)
-
-    base = ref
-    if base.lower().endswith(EXTS):
-        base = os.path.splitext(base)[0] + ".json"
-    elif not base.endswith(".json"):
-        base = base + ".json"
-    nome = os.path.splitext(os.path.basename(base))[0]
-    for p in (
-        base,
-        os.path.join(VALIDACAO_DIR, base),
-        os.path.join(VALIDACAO_DIR, nome, os.path.basename(base)),
-    ):
-        if os.path.exists(p):
-            return p
-    print(f"[ERRO] JSON do tile não encontrado para '{ref}'.")
-    sys.exit(1)
-
-
-def listar_jsons(ref: str, pendentes: bool, sobrescrever: bool) -> list[str]:
-    """Resolve uma referência para uma lista de JSONs anotáveis."""
-    candidatos = [ref, os.path.join(VALIDACAO_DIR, ref)]
-    pasta = next((p for p in candidatos if os.path.isdir(p)), None)
-    if pasta is None:
-        return [resolver_json(ref, sobrescrever)]
-
-    jsons = sorted(
-        os.path.join(raiz, nome)
-        for raiz, _, nomes in os.walk(pasta)
-        for nome in nomes
-        if nome.endswith(".json")
-    )
-    if pendentes:
-        filtrados = []
-        for p in jsons:
-            with open(p, encoding="utf-8") as f:
-                meta = json.load(f)
-            if not meta.get("revisado", False):
-                filtrados.append(p)
-        jsons = filtrados
-    if not jsons:
-        print(f"[ERRO] Nenhum JSON encontrado em '{ref}'.")
-        sys.exit(1)
-    return jsons
-
-
-def refazer_validacao_pasta(ref: str) -> list[str]:
-    """Recria os JSONs de validação de uma pasta usando o algoritmo atual."""
-    candidatos = [ref, os.path.join(VALIDACAO_DIR, ref)]
-    pasta = next((p for p in candidatos if os.path.isdir(p)), None)
-    if pasta is None:
-        print(f"[ERRO] pasta não encontrada: '{ref}'.")
-        sys.exit(1)
-
-    imagens = sorted(
-        os.path.join(raiz, nome)
-        for raiz, _, nomes in os.walk(pasta)
-        for nome in nomes
-        if nome.lower().endswith(EXTS)
-        and not os.path.splitext(nome)[0].endswith("_vis")
-    )
-    if not imagens:
-        print(f"[ERRO] Nenhuma imagem encontrada em '{ref}'.")
-        sys.exit(1)
-
-    existentes = sorted(
-        os.path.join(raiz, nome)
-        for raiz, _, nomes in os.walk(pasta)
-        for nome in nomes
-        if nome.endswith(".json") or nome.endswith("_vis.png")
-    )
-    if existentes:
-        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_dir = os.path.join(_ROOT, "data", f"validacao_backup_{stamp}")
-        for caminho in existentes:
-            rel = os.path.relpath(caminho, pasta)
-            destino = os.path.join(backup_dir, rel)
-            os.makedirs(os.path.dirname(destino), exist_ok=True)
-            shutil.copy2(caminho, destino)
-        print(f"[OK] backup criado: {backup_dir}")
-
-    jsons = [criar_validacao_imagem(img, sobrescrever=True) for img in imagens]
-    print(f"[OK] validação refeita: {len(jsons)} JSON(s)")
-    return jsons
-
-
-def resumo(jsons: list[str]) -> None:
-    """Imprime um resumo do conjunto de anotação."""
-    n_rev = n_det = n_emb = n_lixo = n_falt = 0
-    for p in jsons:
-        with open(p, encoding="utf-8") as f:
-            meta = json.load(f)
-        n_rev += int(meta.get("revisado", False))
-        n_det += len(meta["deteccoes"])
-        n_emb += sum(1 for d in meta["deteccoes"] if d["label"] == "embauba")
-        n_lixo += sum(1 for d in meta["deteccoes"] if d["label"] == "lixo")
-        n_falt += len(meta.get("faltantes", []))
-    print(f"[INFO] {len(jsons)} tiles de validação")
-    print(f"[INFO] revisados: {n_rev}/{len(jsons)}")
-    print(f"[INFO] detecções: {n_det} ({n_emb} embaúba / {n_lixo} lixo), faltantes: {n_falt}")
+def salvar_overlay(img_bgr: Any, json_path: str, meta: dict[str, Any]) -> None:
+    """Grava `<tile>_vis.png`: detecções (verde / vermelho=falso+) e faltantes (azul)."""
+    vis = img_bgr.copy()
+    fp = set(meta.get("falsos_positivos", []))
+    for i, d in enumerate(meta["embaubas"]):
+        x, y, w, h = d["bbox"]
+        cor = VERMELHO if i in fp else VERDE
+        cv2.rectangle(vis, (x, y), (x + w, y + h), cor, 4)
+        cv2.putText(vis, f"#{i}", (x, max(0, y - 12)), FONT, 1.1, cor, 3)
+    for fa in meta.get("faltantes", []):
+        x, y, w, h = fa["bbox"]
+        cv2.rectangle(vis, (x, y), (x + w, y + h), AZUL, 4)
+        cv2.putText(vis, "faltante", (x, max(0, y - 12)), FONT, 1.1, AZUL, 3)
+    base = os.path.splitext(os.path.basename(json_path))[0]
+    cv2.imwrite(os.path.join(os.path.dirname(json_path), f"{base}_vis.png"), vis)
 
 
 def ponto_em_bbox(px: int, py: int, bbox: list[int]) -> bool:
@@ -228,8 +112,9 @@ def ponto_em_bbox(px: int, py: int, bbox: list[int]) -> bool:
     return x <= px <= x + w and y <= py <= y + h
 
 
-def salvar(json_path: str, meta: dict[str, Any], faltantes: list[list[int]]) -> None:
-    """Grava as anotações de volta no JSON e marca o tile como revisado."""
+def salvar(json_path: str, meta: dict[str, Any], fp: set[int], faltantes: list[list[int]]) -> None:
+    """Grava as correções no JSON e marca o tile como revisado."""
+    meta["falsos_positivos"] = sorted(fp)
     meta["faltantes"] = [{"bbox": [int(v) for v in fb]} for fb in faltantes]
     meta["revisado"] = True
     with open(json_path, "w", encoding="utf-8") as f:
@@ -239,7 +124,7 @@ def salvar(json_path: str, meta: dict[str, Any], faltantes: list[list[int]]) -> 
         salvar_overlay(img, json_path, meta)
 
 
-def anotar(json_path: str, pos: int = 1, total: int = 1) -> str:
+def anotar(json_path: str) -> str:
     """Abre a janela de anotação para o tile do JSON dado."""
     with open(json_path, encoding="utf-8") as f:
         meta = json.load(f)
@@ -249,7 +134,9 @@ def anotar(json_path: str, pos: int = 1, total: int = 1) -> str:
     escala = MAX_LADO / max(altura, largura)
     base = cv2.resize(img, (int(largura * escala), int(altura * escala)))
 
+    deteccoes = [d["bbox"] for d in meta["embaubas"]]
     estado: dict[str, Any] = {
+        "fp": set(meta.get("falsos_positivos", [])),
         "faltantes": [list(fa["bbox"]) for fa in meta.get("faltantes", [])],
         "down": None,   # ponto inicial do clique/arrasto (coords originais)
         "drag": None,   # retângulo em arrasto (coords originais)
@@ -258,23 +145,22 @@ def anotar(json_path: str, pos: int = 1, total: int = 1) -> str:
 
     def desenhar() -> None:
         vis = base.copy()
-        for d in meta["deteccoes"]:
-            x, y, w, h = (int(v * escala) for v in d["bbox"])
-            cor = VERDE if d["label"] == "embauba" else VERMELHO
+        for i, bb in enumerate(deteccoes):
+            x, y, w, h = (int(v * escala) for v in bb)
+            cor = VERMELHO if i in estado["fp"] else VERDE
             cv2.rectangle(vis, (x, y), (x + w, y + h), cor, 2)
-            cv2.putText(vis, f"#{d['id']}", (x, max(10, y - 4)), FONT, 0.45, cor, 1)
+            cv2.putText(vis, f"#{i}", (x, max(10, y - 4)), FONT, 0.45, cor, 1)
         for fb in estado["faltantes"]:
             x, y, w, h = (int(v * escala) for v in fb)
             cv2.rectangle(vis, (x, y), (x + w, y + h), AZUL, 2)
         if estado["drag"]:
             x0, y0, x1, y1 = (int(v * escala) for v in estado["drag"])
             cv2.rectangle(vis, (x0, y0), (x1, y1), AMARELO, 1)
-        n_emb = sum(1 for d in meta["deteccoes"] if d["label"] == "embauba")
-        prefixo = f"{pos}/{total}  " if total > 1 else ""
+        tp = len(deteccoes) - len(estado["fp"])
         rev = "rev" if meta.get("revisado", False) else "novo"
-        ajuda = (f"{prefixo}{rev}  embauba:{n_emb}  lixo:{len(meta['deteccoes'])-n_emb}  "
+        ajuda = (f"{rev}  embauba:{tp}  falso+:{len(estado['fp'])}  "
                  f"faltantes:{len(estado['faltantes'])}   "
-                 "[clique]=alterna  [arrasta]=faltante  [dir]=remove  u s n q")
+                 "[clique]=falso+  [arrasta]=faltante  [dir]=remove  u s q")
         cv2.rectangle(vis, (0, 0), (vis.shape[1], 22), (0, 0, 0), -1)
         cv2.putText(vis, ajuda, (6, 16), FONT, 0.42, (255, 255, 255), 1)
         cv2.imshow(win, vis)
@@ -295,10 +181,10 @@ def anotar(json_path: str, pos: int = 1, total: int = 1) -> str:
                     estado["faltantes"].append(bb)
             elif estado["down"]:
                 dx, dy = estado["down"]
-                dentro = [d for d in meta["deteccoes"] if ponto_em_bbox(dx, dy, d["bbox"])]
+                dentro = [i for i, bb in enumerate(deteccoes) if ponto_em_bbox(dx, dy, bb)]
                 if dentro:  # menor caixa que contém o ponto (permite caixas aninhadas)
-                    alvo = min(dentro, key=lambda d: d["bbox"][2] * d["bbox"][3])
-                    alvo["label"] = "lixo" if alvo["label"] == "embauba" else "embauba"
+                    alvo = min(dentro, key=lambda i: deteccoes[i][2] * deteccoes[i][3])
+                    estado["fp"].discard(alvo) if alvo in estado["fp"] else estado["fp"].add(alvo)
             estado["down"] = None; estado["drag"] = None; desenhar()
         elif event == cv2.EVENT_RBUTTONDOWN:
             for i, fb in enumerate(estado["faltantes"]):
@@ -314,51 +200,33 @@ def anotar(json_path: str, pos: int = 1, total: int = 1) -> str:
         if k in (ord("q"), 27):
             cv2.destroyAllWindows()
             return "sair"
-        if k == ord("n"):
-            cv2.destroyAllWindows()
-            return "pular"
         if k == ord("u") and estado["faltantes"]:
             estado["faltantes"].pop(); desenhar()
         if k == ord("s"):
-            salvar(json_path, meta, estado["faltantes"])
-            print(f"[OK] salvo: {json_path}  (revisado, {len(estado['faltantes'])} faltantes)")
+            salvar(json_path, meta, estado["fp"], estado["faltantes"])
+            print(f"[OK] salvo: {json_path}  (revisado, "
+                  f"{len(estado['fp'])} falso+, {len(estado['faltantes'])} faltantes)")
             cv2.destroyAllWindows()
             return "salvo"
-    cv2.destroyAllWindows()
-    return "sair"
-
-
-def anotar_lista(jsons: list[str]) -> None:
-    """Percorre uma lista de JSONs para revisão manual."""
-    resumo(jsons)
-    salvos = pulados = 0
-    for i, p in enumerate(jsons, 1):
-        print(f"[INFO] abrindo {i}/{len(jsons)}: {p}")
-        r = anotar(p, i, len(jsons))
-        if r == "salvo":
-            salvos += 1
-        elif r == "pular":
-            pulados += 1
-        else:
-            break
-    print(f"[INFO] sessão encerrada: {salvos} salvo(s), {pulados} pulado(s).")
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Revisa labels e embaúbas faltantes da validação.")
-    ap.add_argument("alvo", help="tile, JSON ou pasta de JSONs")
-    ap.add_argument("--pendentes", action="store_true",
-                    help="ao receber pasta, abre apenas JSONs com revisado=false")
-    ap.add_argument("--resumo", action="store_true",
-                    help="só imprime o resumo do conjunto, sem abrir janela")
+    ap = argparse.ArgumentParser(description="Adiciona e anota um tile na revisão de validação.")
+    ap.add_argument("alvo", help="nome do tile (ex.: tile_0053) ou caminho de imagem")
     ap.add_argument("--refazer", action="store_true",
-                    help="recria JSON inicial de uma imagem ou de todas as imagens de uma pasta")
+                    help="recria o JSON a partir do algoritmo (descarta anotações) antes de abrir")
     args = ap.parse_args()
-    if args.refazer and os.path.isdir(args.alvo):
-        jsons = refazer_validacao_pasta(args.alvo)
-    else:
-        jsons = listar_jsons(args.alvo, args.pendentes, args.refazer)
-    if args.resumo:
-        resumo(jsons)
-    else:
-        anotar_lista(jsons)
+
+    img_path = resolver_imagem(args.alvo)
+    base = os.path.splitext(os.path.basename(img_path))[0]
+    json_path = os.path.join(VALIDACAO_DIR, base, base + ".json")
+
+    precisa_criar = args.refazer or not os.path.exists(json_path)
+    if not precisa_criar:
+        with open(json_path, encoding="utf-8") as f:
+            if "embaubas" not in json.load(f):  # JSON em esquema antigo
+                print(f"[INFO] '{json_path}' está no esquema antigo; recriando pelo algoritmo.")
+                precisa_criar = True
+    if precisa_criar:
+        json_path = adicionar_revisao(img_path)
+    anotar(json_path)

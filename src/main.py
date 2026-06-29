@@ -13,11 +13,12 @@ import sys
 import cv2
 
 from core.execucao import processar_todos_tiles
-from core.estatisticas import gerar_figuras, gerar_relatorio
+from core.estatisticas import gerar_figuras, gerar_relatorio, calcular_validacao
 from core.deteccao import detectar, analisar, salvar_passo_a_passo
 
 DATA:              str = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
 TILES_DIR:         str = os.path.join(DATA, "tiles")
+VALIDACAO_DIR:     str = os.path.join(DATA, "validacao")
 OUTPUT_DIR:        str = os.path.join(DATA, "output")
 PASSO_A_PASSO_DIR: str = os.path.join(OUTPUT_DIR, "passo_a_passo")
 CHECKPOINT_DIR:    str = os.path.join(OUTPUT_DIR, "checkpoints")
@@ -97,6 +98,14 @@ def detectar_caminho(caminho: str, saida: str, vis: bool, passo_a_passo: bool) -
     print(f"\n[CONCLUÍDO] {len(arquivos)} imagem(ns), {total} detecções no total. Saída em '{saida}/'")
 
 
+def imprimir_validacao() -> None:
+    """Imprime as métricas de validação a partir de `data/validacao`."""
+    v = calcular_validacao(VALIDACAO_DIR)
+    print(f"\n=== Validação ({v['revisados']}/{v['jsons']} tiles revisados) ===")
+    print(f"  TP: {v['tp']}   FP: {v['fp']}   FN (faltantes): {v['fn']}")
+    print(f"  Precisão: {v['precisao']:.1f}%   Recall: {v['recall']:.1f}%   F1: {v['f1']:.1f}%")
+
+
 def main() -> None:
     ap = argparse.ArgumentParser(description="Detecta embaúba (Cecropia) em tiles, imagem ou pasta.")
     ap.add_argument("caminho", nargs="?", default=None,
@@ -109,9 +118,15 @@ def main() -> None:
                     help="com <caminho>, também salva a figura com as 8 etapas")
     ap.add_argument("--passo-a-passo-cada", type=int, default=1,
                     help="no pipeline completo, salva passo a passo a cada N tiles não pretos")
+    ap.add_argument("--validacao", action="store_true",
+                    help="só imprime as métricas de validação (data/validacao) e sai")
     args = ap.parse_args()
     if args.passo_a_passo_cada < 1:
         ap.error("--passo-a-passo-cada deve ser maior ou igual a 1")
+
+    if args.validacao:
+        imprimir_validacao()
+        return
 
     if args.caminho is None:
         if args.saida is not None:
