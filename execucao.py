@@ -97,7 +97,7 @@ def processar_todos_tiles(tiles_dir, passo_a_passo_dir, output_dir):
         print(f"\n[INFO] Nova run: {run_id}")
 
     pendentes = [info for info in meta["tiles"] if info["tile_id"] not in ja_feitos]
-    n_workers = max(1, cpu_count() // 2)
+    n_workers = min(3, max(1, cpu_count() // 2))
     print(f"[INFO] Processando {len(pendentes)}/{total_tiles} tiles com {n_workers} workers...")
 
     args = [(info, pixel_size, tiles_dir, passo_a_passo_dir) for info in pendentes]
