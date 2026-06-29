@@ -10,17 +10,18 @@ python3 -c "import cv2, numpy, matplotlib" 2>/dev/null || {
 }
 
 # Verifica tiles
-if [ ! -f "tiles/metadados_tiles.json" ]; then
-    echo "[ERRO] Pasta tiles/ não encontrada."
+if [ ! -f "data/tiles/metadados_tiles.json" ]; then
+    echo "[ERRO] Pasta data/tiles/ não encontrada."
     echo "       Baixe os tiles em: https://drive.google.com/drive/folders/1Gux57VofI_bxgt66hlXgaVlp_s21emNl"
+    echo "       e coloque-os em data/tiles/"
     exit 1
 fi
 
 # Cria pastas de saída
-mkdir -p output/passo_a_passo output/checkpoints
+mkdir -p data/output/passo_a_passo data/output/checkpoints
 
-# Executa pipeline
-MPLBACKEND=Agg python3 main.py
+# Executa o pipeline completo (caminhos resolvidos a partir de src/main.py)
+MPLBACKEND=Agg python3 src/main.py
 
 echo ""
-echo "[CONCLUÍDO] Resultados em output/"
+echo "[CONCLUÍDO] Resultados em data/output/"

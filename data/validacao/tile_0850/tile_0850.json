@@ -1,0 +1,98 @@
+{
+  "tile": "tile_0850.jpg",
+  "revisado": true,
+  "deteccoes": [
+    {
+      "id": 1,
+      "label": "embauba",
+      "bbox": [
+        1198,
+        1012,
+        139,
+        295
+      ],
+      "area": 14821.0,
+      "circular": 0.1953,
+      "fill": 0.2343
+    },
+    {
+      "id": 2,
+      "label": "embauba",
+      "bbox": [
+        794,
+        1008,
+        233,
+        268
+      ],
+      "area": 23707.0,
+      "circular": 0.1249,
+      "fill": 0.2249
+    },
+    {
+      "id": 3,
+      "label": "embauba",
+      "bbox": [
+        1265,
+        982,
+        347,
+        293
+      ],
+      "area": 29195.5,
+      "circular": 0.1141,
+      "fill": 0.1975
+    },
+    {
+      "id": 4,
+      "label": "embauba",
+      "bbox": [
+        417,
+        869,
+        316,
+        314
+      ],
+      "area": 55814.5,
+      "circular": 0.3292,
+      "fill": 0.2658
+    },
+    {
+      "id": 5,
+      "label": "embauba",
+      "bbox": [
+        0,
+        714,
+        207,
+        308
+      ],
+      "area": 41397.0,
+      "circular": 0.3753,
+      "fill": 0.2564
+    },
+    {
+      "id": 6,
+      "label": "lixo",
+      "bbox": [
+        1722,
+        75,
+        154,
+        224
+      ],
+      "area": 12347.0,
+      "circular": 0.1948,
+      "fill": 0.1445
+    },
+    {
+      "id": 7,
+      "label": "lixo",
+      "bbox": [
+        1879,
+        0,
+        169,
+        190
+      ],
+      "area": 22367.0,
+      "circular": 0.3473,
+      "fill": 0.4337
+    }
+  ],
+  "faltantes": []
+}

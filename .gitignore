@@ -1,11 +1,16 @@
 # Saídas geradas pelo pipeline
-output/*
-!output/.gitkeep
+data/output/*
+!data/output/.gitkeep
+data/output_backup_*/
+data/validacao_backup_*/
 
 # Tiles (imagens ~1.5 GB)
 # Download: https://drive.google.com/drive/folders/1Gux57VofI_bxgt66hlXgaVlp_s21emNl
-tiles/*
-!tiles/.gitkeep
+data/tiles/*
+!data/tiles/.gitkeep
+
+# Tiles dentro da validação rotulada (pesados); JSONs e overlays ficam versionados
+data/validacao/**/*.jpg
 
 # Python
 __pycache__/
