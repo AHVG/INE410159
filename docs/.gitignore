@@ -1,0 +1,13 @@
+# Auxiliares LaTeX gerados na compilação
+*.aux
+*.log
+*.toc
+*.out
+*.lof
+*.lot
+*.nav
+*.snm
+*.vrb
+*.synctex.gz
+*.fls
+*.fdb_latexmk

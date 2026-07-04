@@ -1,0 +1,567 @@
+\documentclass[12pt, a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[brazil]{babel}
+\usepackage{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{parskip}
+\usepackage{array}
+
+\geometry{margin=2.5cm}
+
+\hypersetup{
+    colorlinks=true,
+    linkcolor=black,
+    urlcolor=blue,
+    citecolor=black
+}
+
+\lstset{
+    basicstyle=\ttfamily\small,
+    backgroundcolor=\color{gray!10},
+    frame=single,
+    breaklines=true,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+}
+
+% ─────────────────────────────────────────────────────────────────────────────
+\title{
+    \textbf{Detecção de Árvores \textit{Cecropia} (Embaúba) em\\
+    Mosaico Aéreo com Visão Computacional Clássica}\\[0.5em]
+    \large INE5443 — Reconhecimento de Padrões \\ UFSC
+}
+\author{Augusto H. V. Guerner}
+\date{Junho de 2026}
+% ─────────────────────────────────────────────────────────────────────────────
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+\section{Introdução}
+
+A \textit{Cecropia} (popularmente conhecida como embaúba) é um gênero de árvore
+pioneira amplamente distribuído em ambientes tropicais e subtropicais
+brasileiros. Sua presença em áreas de vegetação secundária é um indicador de
+regeneração florestal, tornando-a de interesse em estudos de cobertura vegetal e
+dinâmica de paisagem.
+
+Este trabalho apresenta um pipeline de visão computacional clássica, sem uso de
+aprendizado profundo, para detecção automática de indivíduos de \textit{Cecropia}
+em um mosaico aéreo de alta resolução. A abordagem utiliza segmentação por espaço
+de cor HSV, operações morfológicas, filtragem geométrica por contorno e um
+filtro final por área/circularidade, processada em paralelo sobre 992
+\textit{tiles} do mosaico.
+
+\section{Dataset}
+
+O mosaico aéreo foi dividido em tiles JPEG de resolução fixa. A Tabela
+\ref{tab:dataset} resume as características do dataset.
+
+\begin{table}[H]
+\centering
+\caption{Características do dataset.}
+\label{tab:dataset}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parâmetro} & \textbf{Valor} \\
+\midrule
+Total de tiles & 992 \\
+Resolução por tile & 2048 $\times$ 2048 px \\
+Sobreposição entre tiles & 512 px (25\%) \\
+Sistema de referência (CRS) & EPSG:31982 (UTM Zona 22S) \\
+Resolução espacial & $\approx$ 0,00848 u/px \\
+Tamanho aproximado em disco (\texttt{data/tiles}) & 899,0 MB \\
+Tiles pretos (fora da área mapeada) & 229 (ignorados automaticamente) \\
+Tiles efetivamente processados & 361 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Os tiles completamente pretos correspondem a regiões fora dos limites do mosaico
+(padding do recorte) e são descartados antes do processamento com base na
+intensidade média da imagem.
+
+O conjunto de validação fica em \texttt{data/validacao/}, com uma subpasta por
+imagem revisada (\texttt{<nome>.jpg}, \texttt{<nome>.json},
+\texttt{<nome>\_vis.png}). Atualmente há 18 JSONs de validação, todos revisados
+manualmente. Cada JSON armazena a saída do detector em \texttt{embaubas}, os
+índices marcados como falso positivo em \texttt{falsos\_positivos} e caixas
+\texttt{faltantes} para copas visíveis que não foram detectadas.
+
+\section{Pipeline de Detecção}
+
+O pipeline foi organizado como uma sequência de etapas clássicas de visão
+computacional porque a embaúba possui um sinal visual relativamente
+interpretável no mosaico: a copa tende a aparecer em uma faixa de verde
+claro/amarelado e, após a segmentação por cor, pode ser tratada como uma região
+conectada. A divisão em cor, morfologia, contornos e filtros geométricos torna
+o processo auditável: cada decisão intermediária pode ser visualizada e ajustada
+sem depender de aprendizado profundo.
+
+Essa escolha também responde às principais dificuldades do problema. A
+segmentação HSV separa candidatos pela cor; as operações morfológicas reduzem
+falhas internas e ruídos; os contornos transformam a máscara em objetos
+mensuráveis; e os filtros finais removem regiões incompatíveis com copas
+plausíveis. A Figura~\ref{fig:pipeline} mostra a visão geral do passo a passo em
+um tile amostrado.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Visualização das imagens de inspeção do pipeline sobre
+             \texttt{tile\_0635.jpg}. Da esquerda para a direita, de cima para
+             baixo: imagem original, blur gaussiano, canal H, canal S, canal V,
+             máscara bruta, máscara limpa e resultado final.}
+    \label{fig:pipeline}
+\end{figure}
+
+\subsection{Etapa 1 - Suavização (Gaussian Blur)}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={472bp 486bp 945bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Imagem suavizada com filtro gaussiano.}
+    \label{fig:etapa-blur}
+\end{figure}
+
+\textbf{Motivação.} A primeira etapa reduz ruído fino de textura e pequenas
+variações locais causadas por compressão JPEG, sombra e detalhes das folhas. Sem
+essa suavização, pixels isolados podem cair dentro da faixa HSV e gerar manchas
+espúrias na máscara.
+
+A imagem original em BGR é suavizada com um filtro gaussiano de kernel $9 \times 9$
+e $\sigma = 0$ (calculado automaticamente a partir do tamanho do kernel). O
+filtro preserva a estrutura geral das copas, mas atenua detalhes muito pequenos.
+
+\subsection{Etapa 2 - Conversão \texorpdfstring{BGR $\rightarrow$ HSV}{BGR para HSV}}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, trim={945bp 486bp 472bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \caption{Canal H.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, trim={1417bp 486bp 0bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \caption{Canal S.}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.31\textwidth}
+        \centering
+        \includegraphics[width=\textwidth, trim={0bp 0bp 1417bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \caption{Canal V.}
+    \end{subfigure}
+    \caption{Canais HSV extraídos após a suavização.}
+    \label{fig:etapa-hsv}
+\end{figure}
+
+\textbf{Motivação.} A conversão para HSV separa matiz, saturação e brilho. Isso
+é útil porque a cor característica da copa é descrita melhor pela matiz do que
+pelos valores RGB brutos, que variam mais com iluminação e sombra.
+
+A imagem suavizada é convertida para o espaço de cor HSV (\textit{Hue,
+Saturation, Value}). Esse espaço é mais robusto a variações de iluminação do que
+RGB, pois separa a informação de matiz da luminosidade.
+
+\subsection{Etapa 3 - Limiarização por Cor}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={472bp 0bp 945bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Máscara bruta produzida pela faixa HSV.}
+    \label{fig:etapa-limiarizacao}
+\end{figure}
+
+\textbf{Motivação.} A limiarização por cor é o ponto de entrada do detector:
+ela transforma a imagem em uma hipótese binária de onde pode haver embaúba. A
+faixa foi escolhida para privilegiar o verde-claro das copas, sabendo que outras
+espécies com cor parecida também podem aparecer como candidatos.
+
+A segmentação é feita com um limiar fixo definido empiricamente para a tonalidade
+verde-clara característica da folhagem de \textit{Cecropia}:
+
+\begin{equation}
+    \text{HSV}_{lower} = [44,\; 144,\; 104], \qquad
+    \text{HSV}_{upper} = [58,\; 231,\; 203]
+\end{equation}
+
+Pixels cujos valores HSV estão dentro desse intervalo recebem valor 255 na
+\textit{máscara bruta}; os demais recebem 0.
+
+\subsection{Etapa 4 - Fechamento Morfológico}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Máscara após operações morfológicas, com regiões internas mais coesas.}
+    \label{fig:etapa-close}
+\end{figure}
+
+\textbf{Motivação.} A copa de uma árvore raramente aparece como uma mancha
+compacta perfeita: há sombras, pequenas aberturas e variações internas. O
+fechamento conecta fragmentos próximos e fecha buracos, permitindo que uma copa
+seja tratada como uma região única.
+
+A máscara bruta contém fragmentos desconectados correspondentes a partes visíveis
+da copa entre as folhas. A operação de fechamento morfológico com um elemento
+estruturante elíptico de $25 \times 25$ pixels preenche essas lacunas, unindo
+fragmentos próximos em regiões coesas que representam copas individuais.
+
+\subsection{Etapa 5 - Abertura Morfológica}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Máscara limpa após remoção de pequenos componentes.}
+    \label{fig:etapa-open}
+\end{figure}
+
+\textbf{Motivação.} Depois do fechamento, ainda podem restar pequenos respingos
+ativados pela faixa HSV. A abertura remove esses componentes menores e diminui
+o número de candidatos sem destruir regiões maiores compatíveis com copas.
+
+Após o fechamento, pequenas regiões isoladas que não correspondem a copas reais
+são eliminadas pela abertura morfológica com elemento elíptico de $9 \times 9$
+pixels. Essa etapa remove ativações espúrias de pequena área sem afetar as
+regiões maiores já consolidadas pelo fechamento.
+
+\subsection{Etapa 6 - Detecção de Contornos}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Regiões conectadas convertidas em candidatos desenhados sobre a imagem.}
+    \label{fig:etapa-contornos}
+\end{figure}
+
+\textbf{Motivação.} A máscara binária precisa ser convertida em objetos
+geométricos para que cada região possa ser medida. A detecção de contornos
+fornece área, perímetro e caixa delimitadora para as etapas de filtragem.
+
+Os contornos externos da máscara limpa são extraídos com \texttt{cv2.findContours}
+usando \texttt{RETR\_EXTERNAL} e \texttt{CHAIN\_APPROX\_SIMPLE}. Essa escolha
+privilegia os blobs principais da segmentação e reduz a complexidade dos
+contornos sem afetar a área estimada.
+
+\subsection{Etapa 7 - Filtragem por Área Mínima}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Candidatos remanescentes após descarte de regiões pequenas.}
+    \label{fig:etapa-area}
+\end{figure}
+
+\textbf{Motivação.} Regiões muito pequenas tendem a ser ruído, bordas de outras
+plantas ou pequenos agrupamentos de folhas, não copas completas. O filtro de
+área mínima reduz esses falsos candidatos antes da regra final.
+
+Contornos com área inferior a $10.000\;\text{px}^2$ são descartados. Esse
+threshold elimina manchas pequenas e ruído residual que ainda sobreviveram às
+etapas morfológicas, mantendo apenas regiões compatíveis com copas.
+
+\subsection{Etapa 8 - Filtro Final de Embaúba}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Resultado final depois dos filtros de tamanho, circularidade e solidez.}
+    \label{fig:etapa-filtro-final}
+\end{figure}
+
+\textbf{Motivação.} A segmentação por cor é propositalmente permissiva. O filtro
+final usa forma e tamanho para rejeitar parte dos falsos positivos, como centros
+de palmeiras e blobs fundidos grandes demais, mantendo regiões mais plausíveis
+como embaúba.
+
+Sobre os candidatos restantes, aplica-se uma regra geométrica final: um contorno
+é aceito como embaúba quando sua área é maior ou igual a $33.798\;\text{px}^2$
+ou sua circularidade é menor ou igual a $0,1551$, desde que a área não ultrapasse
+$600.000\;\text{px}^2$ e a solidez seja pelo menos $0,48$. A primeira condição
+favorece copas grandes; a segunda captura formas menos circulares; o teto de
+área remove blobs fundidos gigantes; e a solidez evita regiões excessivamente
+fragmentadas.
+
+\subsection{Etapa 9 - Convex Hull}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \caption{Contorno final representado pelo fecho convexo da região detectada.}
+    \label{fig:etapa-hull}
+\end{figure}
+
+\textbf{Motivação.} O contorno segmentado pode ter reentrâncias por sombra,
+lacunas ou mistura com vegetação vizinha. O fecho convexo produz uma forma mais
+estável para visualização e exportação dos limites da copa.
+
+Para cada contorno aprovado, calcula-se o fecho convexo (\textit{convex hull}).
+Isso regulariza a forma da detecção, eliminando reentrâncias causadas por
+sombras ou sobreposição de folhas, e aproxima melhor o perímetro circular da
+\textit{Cecropia} vista de cima. O hull é desenhado sobre a imagem original para
+visualização.
+
+\section{Resultados}
+
+\subsection{Estatísticas Gerais}
+
+A Tabela~\ref{tab:stats} apresenta as métricas consolidadas do processamento
+completo do dataset.
+
+\begin{table}[H]
+\centering
+\caption{Estatísticas do processamento completo (361 tiles).}
+\label{tab:stats}
+\begin{tabular}{ll}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Tiles processados & 361 \\
+Tiles pretos ignorados & 229 \\
+Tiles com $\geq 1$ detecção & 311 (86,1\%) \\
+Total de detecções & 1.218 \\
+Detecções por tile & $3{,}37 \pm 2{,}78$ \\
+Área total estimada & 8.365,61 u² \\
+Área média por região & 95.522 px² \\
+Área máxima por região & 599.406 px² \\
+Cobertura HSV média & 14,891\% \\
+Tempo total & 89,0 s \\
+Tempo médio por tile & $151{,}9 \pm 57{,}3$ ms \\
+Memória média por tile & 63,5 MB \\
+Memória de pico por tile & 64,4 MB \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Distribuição de Detecções por Tile}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../../data/output/hist_deteccoes_por_tile.png}
+    \caption{Histograma da distribuição do número de detecções por tile.}
+    \label{fig:hist_det}
+\end{figure}
+
+A distribuição (Figura~\ref{fig:hist_det}) é assimétrica à direita: a maioria
+dos tiles apresenta poucas detecções, enquanto um pequeno número de tiles
+concentra muitas detecções, sugerindo que a \textit{Cecropia} ocorre em manchas
+densas em certas regiões do mosaico.
+
+\subsection{Distribuição das Áreas de Detecção}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../../data/output/hist_areas_deteccao.png}
+    \caption{Histograma das áreas das regiões detectadas (em px²).}
+    \label{fig:hist_area}
+\end{figure}
+
+A grande maioria das detecções (Figura~\ref{fig:hist_area}) possui área próxima
+ao limiar mínimo de 10.000 px², com uma cauda longa de regiões muito grandes.
+Regiões extremamente grandes indicam provavelmente agrupamentos de vegetação com
+cor similar fundidos pelo fechamento morfológico, e não copas individuais.
+
+\subsection{Cobertura HSV por Tile}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../../data/output/cobertura_percentual.png}
+    \caption{Percentual de cobertura HSV por tile (pixels dentro da faixa HSV
+             definida, após morfologia).}
+    \label{fig:cobertura}
+\end{figure}
+
+A cobertura HSV mede a fração do tile ativada pela faixa de cor após as
+operações morfológicas. Valores altos indicam tiles com muita vegetação dentro
+da faixa espectral da embaúba, mas não significam automaticamente muitas copas:
+também podem refletir vegetação semelhante, sombras e regiões fundidas.
+
+\subsection{Top 10 Tiles com Mais Detecções}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.8\textwidth]{../../data/output/top10_tiles.png}
+    \caption{Top 10 tiles por número de detecções.}
+    \label{fig:top10}
+\end{figure}
+
+\begin{table}[H]
+\centering
+\caption{Top 10 tiles por número de detecções.}
+\label{tab:top10}
+\begin{tabular}{lrrrr}
+\toprule
+\textbf{Tile} & \textbf{Detecções} & \textbf{Área (px²)} & \textbf{Área (u²)} & \textbf{Cobertura} \\
+\midrule
+tile\_0634.jpg & 13 & 1.027.336 & 73,87 & 25,04\% \\
+tile\_0666.jpg & 13 & 1.271.576 & 91,43 & 30,57\% \\
+tile\_0633.jpg & 12 &   796.373 & 57,26 & 20,03\% \\
+tile\_0488.jpg & 11 & 1.224.788 & 88,07 & 29,33\% \\
+tile\_0635.jpg & 11 &   964.494 & 69,35 & 23,86\% \\
+tile\_0753.jpg & 11 &   668.577 & 48,07 & 20,78\% \\
+tile\_0875.jpg & 11 &   819.124 & 58,90 & 21,62\% \\
+tile\_0435.jpg & 10 &   966.308 & 69,48 & 24,23\% \\
+tile\_0591.jpg & 10 & 1.072.664 & 77,13 & 29,15\% \\
+tile\_0721.jpg & 10 &   794.666 & 57,14 & 25,49\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Validação Manual}
+
+A validação compara a saída final do detector com a revisão manual de 18 tiles.
+Em cada JSON revisado, as detecções confirmadas contam como verdadeiros
+positivos, os índices marcados em \texttt{falsos\_positivos} contam como falsos
+positivos e as caixas \texttt{faltantes} contam como falsos negativos.
+
+\begin{table}[H]
+\centering
+\caption{Resumo da validação manual.}
+\label{tab:validacao}
+\begin{tabular}{lr}
+\toprule
+\textbf{Métrica} & \textbf{Valor} \\
+\midrule
+Tiles revisados & 18/18 \\
+Verdadeiros positivos (TP) & 33 \\
+Falsos positivos (FP) & 6 \\
+Falsos negativos / faltantes (FN) & 30 \\
+Precisão & 84,6\% \\
+Recall & 52,4\% \\
+F1 & 64,7\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A precisão de 84,6\% indica que a maior parte das regiões detectadas corresponde
+a embaúba na amostra revisada. O recall de 52,4\% mostra que o método ainda
+perde uma fração relevante das copas reais, principalmente quando a segmentação
+HSV não produz um candidato inicial ou quando a copa aparece com iluminação e
+cor fora da faixa definida.
+
+\subsection{Desempenho Computacional}
+
+\begin{figure}[H]
+    \centering
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../../data/output/tempo_processamento.png}
+        \caption{Tempo de processamento por tile.}
+        \label{fig:tempo}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.48\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../../data/output/memoria_por_tile.png}
+        \caption{Uso de memória por tile.}
+        \label{fig:memoria}
+    \end{subfigure}
+    \caption{Métricas de desempenho computacional do pipeline.}
+    \label{fig:desempenho}
+\end{figure}
+
+O tempo médio de 151,9 ms por tile demonstra que o pipeline clássico permanece
+eficiente para inspeção em lote. O total de 361 tiles válidos foi processado em
+89,0 s, com uso de memória estável ($\sim$64 MB/tile), reflexo das operações
+matriciais do OpenCV que mantêm apenas a imagem corrente em memória. O passo a
+passo foi amostrado em tiles selecionados, reduzindo o custo de geração das
+figuras.
+
+\section{Interpretação e Limitações}
+
+\subsection{Alta taxa de tiles com detecções (86,1\%)}
+
+O fato de 311 em 361 tiles apresentarem ao menos uma detecção sugere cobertura
+ampla do mosaico por vegetação dentro da faixa HSV definida. Entretanto, esse
+número deve ser interpretado com cautela: o filtro HSV não é específico para
+\textit{Cecropia} — outras espécies com folhagem de tonalidade verde-clara
+similar também ativam a máscara.
+
+\subsection{Falsos positivos por confusão espectral}
+
+A inspeção visual do \texttt{tile\_0635.jpg} (Figura~\ref{fig:pipeline})
+evidencia o principal problema do método: a segmentação HSV não distingue
+\textit{Cecropia} de outras plantas com tom similar. No canal H (matiz),
+praticamente toda a vegetação do tile cai dentro do intervalo $[44, 58]$,
+fazendo a máscara bruta ativar de forma generalizada. Após as operações
+morfológicas, grandes blobs são formados fundindo múltiplas espécies, e cada
+blob é contado como uma detecção.
+
+As causas raízes são:
+
+\begin{itemize}
+    \item \textbf{Sobreposição espectral:} o intervalo HSV da \textit{Cecropia}
+    não é exclusivo; vegetação secundária densa tem cor similar.
+    \item \textbf{Ausência de informação de forma:} a \textit{Cecropia} tem copa
+    arredondada com padrão radial característico, mas o pipeline não explora
+    textura nem geometria.
+    \item \textbf{Fusão morfológica:} o CLOSE com kernel de 25 px une copas
+    próximas em uma única região, inflando o número de detecções por área.
+\end{itemize}
+
+\subsection{Regiões de área muito grande}
+
+A área máxima atual foi limitada a 599.406 px² pelo teto de
+$600.000\;\text{px}^2$ no filtro final. Esse teto remove os maiores blobs
+fundidos que apareciam em versões anteriores do pipeline, mas ainda permite
+regiões grandes o suficiente para representar copas extensas ou agrupamentos
+próximos. Portanto, o limiar de área mínima elimina ruído pequeno, enquanto o
+limiar de área máxima reduz agregações incompatíveis com uma copa individual.
+
+\subsection{Leitura da Validação}
+
+A validação final mostra 33 verdadeiros positivos, 6 falsos positivos e 30
+falsos negativos. A precisão de 84,6\% indica que o filtro final de tamanho,
+circularidade e solidez reduziu bem os falsos positivos na amostra revisada. O
+recall de 52,4\%, por outro lado, mostra que muitas copas reais ainda não entram
+na saída final, principalmente por dependerem de uma faixa HSV fixa.
+
+\section{Conclusões}
+
+O pipeline HSV clássico demonstrou ser viável para uma primeira estimativa da
+distribuição espacial de \textit{Cecropia} em mosaicos aéreos: é eficiente,
+escalável via paralelismo e produz resultados interpretáveis pelas visualizações
+passo a passo. O total de 1.218 detecções em 361 tiles indica presença
+consistente de vegetação dentro da faixa espectral buscada.
+
+A validação manual mostrou que o filtro final reduz fortemente os falsos
+positivos, chegando a 84,6\% de precisão. Ainda assim, o recall de 52,4\%
+indica que há embaúbas que escapam tanto na geração de candidatos quanto no
+filtro final.
+
+\subsection*{Melhorias possíveis}
+
+Para aumentar a precisão sem recorrer a deep learning, as seguintes extensões
+são recomendadas:
+
+\begin{enumerate}
+    \item \textbf{Refinamento do intervalo HSV:} amostrar pixels de indivíduos
+    anotados manualmente para ajustar os limiares com base em dados reais,
+    reduzindo a sobreposição espectral com outras espécies.
+    \item \textbf{Consolidação entre tiles:} unir ou deduplicar detecções em
+    regiões de sobreposição para evitar contagens repetidas.
+    \item \textbf{Ajuste dos filtros geométricos:} recalibrar área,
+    circularidade e solidez com mais tiles revisados para aumentar recall sem
+    perder muita precisão.
+    \item \textbf{Análise de textura:} incorporar descritores de textura (LBP,
+    Haralick) para diferenciar a estrutura radial das folhas de \textit{Cecropia}
+    de outras copas.
+\end{enumerate}
+
+\end{document}

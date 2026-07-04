@@ -2,6 +2,22 @@
 
 Projeto final da disciplina de Visão Computacional — UFSC.
 
+Este trabalho faz parte de uma comparação entre duas abordagens para detecção e
+segmentação de copas de **Cecropia pachystachya** em ortomosaicos de VANT:
+
+- **Visão computacional clássica**: abordagem deste repositório, baseada em HSV,
+  morfologia, contornos e filtros geométricos.
+- **SAM 3 e YOLOv8**: outra frente do trabalho, usando modelos modernos para
+  detecção e segmentação.
+
+## Grupo 10
+
+- Gabriel Arantes F. Gualda
+- Fábio H. A. Coelho
+- Nena A. Impanta
+- Augusto de H. V. Guerner
+- Eduardo G. de Lazari
+
 Detecta árvores **Cecropia sp. (Embaúba)** em um mosaico aéreo usando segmentação
 por cor no espaço HSV e morfologia, **sem deep learning** (apenas `cv2`, `numpy`,
 `matplotlib`).

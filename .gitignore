@@ -10,7 +10,10 @@ data/tiles/*
 # Tiles dentro da validação rotulada (pesados); JSONs e overlays ficam versionados
 data/validacao/**/*.jpg
 
-# Python
-__pycache__/
-*.pyc
-*.pyo
+# Sistema operacional
+.DS_Store
+Thumbs.db
+
+# Ambientes virtuais Python
+venv/
+.venv/
