@@ -1,53 +1,77 @@
-# Estrutura Obrigatória do Relatório
+# Estrutura do Relatório Final (Combinado)
 
-## 1. Introdução
+O relatório final integra **duas soluções** para a detecção e segmentação de copas
+de _Cecropia pachystachya_ sobre o **mesmo ortomosaico** de VANT (experimento
+MataDIV):
 
-- Contexto do problema: detecção de árvores Cecropia (Embaúba) em mosaico aéreo
-- Objetivo do trabalho
-- Abordagem escolhida (visão computacional clássica, sem deep learning)
-- Justificativa da abordagem
+- **Parte I — Visão Computacional Clássica** (HSV + morfologia + filtros), gerada a
+  partir do pipeline deste repositório (`data/output/`).
+- **Parte II — Redes Neurais (SAM 3 + YOLOv8)**, cujo material-fonte fica em
+  [`../rede_neural/`](../rede_neural/).
 
-## 2. Dataset
+Fonte LaTeX: [`relatorio.tex`](relatorio.tex). Compilar com [`compilar.sh`](compilar.sh).
 
-- Número de tiles e dimensões (ex: 992 tiles, 2048×2048 px)
-- Sistema de coordenadas e resolução espacial
-- Tamanho aproximado em disco
-- Descrição de casos especiais (ex: tiles completamente pretos, fora da área mapeada)
-- Descrição do conjunto `data/validacao/`: organização por pasta, JSONs de
-  revisão, saída do detector em `embaubas`, índices `falsos_positivos` e caixas
-  `faltantes`
+> Enquanto a Parte II não tiver resultados, usar o marcador `\pendente{...}` no
+> `.tex` (renderiza em vermelho). Ver o checklist em
+> [`../rede_neural/index.md`](../rede_neural/index.md).
 
-## 3. Pipeline
+---
 
-Antes de detalhar as etapas, incluir uma subseção de motivação geral:
+## Ordem geral do documento
 
-- **Motivação da pipeline**: explicar por que o problema foi dividido em
-  etapas clássicas de visão computacional, como a sequência cor → morfologia →
-  contornos → filtros geométricos ajuda na detecção de embaúba e quais
-  limitações essa escolha procura controlar.
+```
+1. Introdução (unificada)
+2. Objetivos
+3. Área de Estudo e Coleta de Dados      ← comum às duas frentes
 
-Depois da motivação geral, descrever **cada etapa** em subseção própria:
+PARTE I — Solução com Visão Computacional Clássica
+4. Dataset (recorte para a abordagem clássica)
+5. Pipeline de Detecção Clássico (9 etapas)
+6. Resultados da Abordagem Clássica
+7. Interpretação e Limitações da Abordagem Clássica
 
-```md
-### 3.X Nome da etapa
+PARTE II — Solução com Redes Neurais (SAM 3 + YOLOv8)
+8. Metodologia da Abordagem Neural
+9. Resultados da Abordagem Neural         ← pendente (ver ../rede_neural/)
 
-![Legenda curta da etapa](caminho/para/imagem.png)
-
-**Motivação:** por que essa etapa foi escolhida — qual problema ela resolve no
-contexto da detecção de embaúba.
-
-**O que faz:** descrição objetiva da operação.
-
-**Parâmetros:** valores utilizados e como foram determinados (empiricamente,
-literatura, etc.).
+PARTE III — Síntese
+10. Discussão Comparativa
+11. Conclusões
 ```
 
-Cada etapa deve ter uma imagem para ilustrar visualmente a transformação ou o
-resultado intermediário correspondente. Preferir imagens do passo a passo
-geradas pelo próprio pipeline em `data/output/passo_a_passo/`, quando
-disponíveis.
+---
 
-### Etapas obrigatórias a cobrir
+## Seção comum
+
+### 1. Introdução
+- Contexto: monitoramento florestal por VANT; importância da _Cecropia_ como
+  indicadora de regeneração e sua distinguibilidade visual.
+- As **duas frentes complementares** e por que operam sobre o mesmo ortomosaico.
+- Objetivo e justificativa de comparar abordagem clássica × neural.
+
+### 2. Objetivos
+- Objetivo geral e objetivos específicos das duas frentes.
+
+### 3. Área de Estudo e Coleta de Dados
+- Experimento MataDIV (Itatinga/ESALQ-USP): parcelas, composições de espécies.
+- Sobrevoo e ortomosaico: VANT, GSD ≈ 0,85 cm/px, dimensões, CRS (EPSG:31982).
+- Deixar explícito que é a **base de dados comum**; cada parte descreve seu recorte.
+
+---
+
+## PARTE I — Visão Computacional Clássica
+
+### 4. Dataset (recorte clássico)
+- 992 tiles, 2048×2048 px, sobreposição, CRS e resolução, tamanho em disco.
+- Tiles pretos (fora da área) ignorados; tiles processados.
+- Conjunto `data/validacao/`: organização por pasta, JSONs (`embaubas`,
+  `falsos_positivos`, `faltantes`).
+
+### 5. Pipeline de Detecção Clássico
+Subseção de **motivação geral** (por que dividir em etapas clássicas: cor →
+morfologia → contornos → filtros geométricos) e, depois, **cada etapa** em subseção
+própria com imagem, motivação, o que faz e parâmetros. Preferir imagens do passo a
+passo em `data/output/passo_a_passo/`.
 
 | Etapa | Operação |
 |-------|----------|
@@ -61,84 +85,74 @@ disponíveis.
 | 8 | Filtro final de embaúba (área/circularidade) |
 | 9 | Convex Hull (aproximação da copa) |
 
-Observação: o Convex Hull também pode ser usado internamente na medição dos
-candidatos (bbox, solidez e preenchimento), mas deve aparecer no relatório como
-etapa final de regularização, visualização e exportação dos limites detectados.
+### 6. Resultados da Abordagem Clássica
+Ordem das subseções:
+1. Estatísticas gerais (tiles processados/ignorados, % com detecção, total de
+   detecções, área total, tempo total/médio, detecções por tile, área por região,
+   memória média e pico).
+2. Distribuição de detecções por tile (histograma + interpretação).
+3. Distribuição das áreas de detecção (histograma + interpretação).
+4. Cobertura HSV por tile (figura; explicar que mede pixels na faixa, não copas).
+5. Top 10 tiles com mais detecções (figura e/ou tabela).
+6. Validação manual (tiles revisados, TP/FP/FN, Precisão/Recall/F1 + interpretação).
+7. Desempenho computacional (figuras de tempo e memória + comentário).
 
-## 4. Resultados
-
-Usar a seguinte ordem de subseções:
-
-### 4.1 Estatísticas gerais
-
-- Total de tiles processados e tiles pretos ignorados
-- Percentual de tiles com detecção
-- Número total de detecções e área total estimada
-- Tempo de processamento (total, médio por tile, mínimo e máximo, quando disponível)
-- Estatísticas de detecções por tile (média, desvio padrão, máximo)
-- Estatísticas de área por região detectada (média, mediana, máxima)
-- Uso de memória médio e pico, quando disponível
-
-### 4.2 Distribuição de detecções por tile
-
-- Histograma de detecções por tile
-- Breve interpretação da distribuição
-
-### 4.3 Distribuição das áreas de detecção
-
-- Histograma das áreas das regiões detectadas
-- Breve interpretação da distribuição e da presença de regiões grandes
-
-### 4.4 Cobertura HSV por tile
-
-- Figura de cobertura HSV
-- Explicar que cobertura HSV mede pixels dentro da faixa de cor após morfologia
-  e não equivale diretamente a número de copas
-
-### 4.5 Top 10 tiles com mais detecções
-
-- Figura e/ou tabela com arquivo, detecções, área e cobertura
-
-### 4.6 Validação manual
-
-- Quantidade de tiles revisados
-- Verdadeiros positivos (TP), falsos positivos (FP) e falsos negativos (FN)
-- Precisão, recall e F1
-- Breve interpretação do que precisão e recall indicam no contexto do método
-
-### 4.7 Desempenho computacional
-
-- Figuras de tempo e memória
-- Comentário sobre custo por tile e viabilidade do pipeline clássico
-
-## 5. Interpretação e Limitações
-
-- Interpretação da taxa de tiles com detecções
-- Discussão sobre falsos positivos por confusão espectral
-- Discussão sobre regiões grandes/fundidas e limites dos filtros geométricos
-- Leitura da validação manual: o que a precisão e o recall indicam
-
-## 6. Conclusões
-
-- Síntese dos resultados obtidos
-- Limitações do método (falsos positivos, dependência de iluminação, sobreposição de tiles, etc.)
-- Possíveis melhorias ou trabalhos futuros
+### 7. Interpretação e Limitações da Abordagem Clássica
+- Taxa de tiles com detecções; falsos positivos por confusão espectral; regiões
+  grandes/fundidas e limites dos filtros; leitura da validação.
 
 ---
 
-## Arquivos desta pasta
+## PARTE II — Redes Neurais (SAM 3 + YOLOv8)
+
+Conteúdo transcrito de [`../rede_neural/relatorio.md`](../rede_neural/relatorio.md).
+
+### 8. Metodologia da Abordagem Neural
+- Contexto: SAM 3 e curadoria por exclusão.
+- 3.3.1 Geração do dataset (SAM 3 text prompt; 1.109 máscaras; 7.488 instâncias).
+- 3.3.2 Divisão espacial (clusterização por grafo/BFS + Monte Carlo).
+- 3.3.3 Correção semi-automatizada (tabela de estrutura final do dataset).
+- 3.3.4 Treinamento YOLOv8x (Optuna/TPE; tabela dos 21 hiperparâmetros).
+- 3.3.5 Inferência e pós-processamento (duas rodadas; deduplicação; 3 categorias).
+- 3.3.6 Segmentação com SAM 3 por prompt geométrico (tabela de parâmetros).
+- 3.3.7 Métricas de avaliação (IoU, P, R, F1, AP, mAP50, mAP50-95).
+
+### 9. Resultados da Abordagem Neural — **PENDENTE**
+A preencher a partir de [`../rede_neural/resultados/`](../rede_neural/resultados/):
+métricas no teste, curvas P-R e de treino, importância dos hiperparâmetros,
+contagem final por categoria e figuras qualitativas. Enquanto vazio, manter
+`\pendente{...}`.
+
+---
+
+## PARTE III — Síntese
+
+### 10. Discussão Comparativa
+- Tabela comparando as duas abordagens (sinal explorado, anotação,
+  interpretabilidade, custo, segmentação, discriminação de espécie, resultado).
+- Como as frentes se complementam.
+
+### 11. Conclusões
+- Síntese dos resultados de cada frente e trabalhos futuros (clássica, neural e
+  integração das duas).
+
+---
+
+## Arquivos das pastas de documentação
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `relatorio.tex` | Fonte LaTeX do relatório escrito |
-| `relatorio.pdf` | PDF compilado do relatório |
-| `apresentacao.tex` | Fonte LaTeX dos slides (Beamer) |
-| `apresentacao.pdf` | PDF compilado da apresentação |
-| `compilar.sh` | Compila `relatorio.tex` → `relatorio.pdf` |
-| `compilar_apresentacao.sh` | Compila `apresentacao.tex` → `apresentacao.pdf` |
+| `relatorio/relatorio.tex` | Fonte LaTeX do relatório final combinado |
+| `relatorio/relatorio.pdf` | PDF compilado |
+| `relatorio/compilar.sh` | Compila `relatorio.tex` → `relatorio.pdf` |
+| `relatorio/index.md` | Este arquivo (estrutura do relatório) |
+| `apresentacao/` | Slides finais (ver `apresentacao/index.md`) |
+| `rede_neural/` | Material-fonte da frente neural (ver `rede_neural/index.md`) |
 
 ```bash
-cd relatorio/
-./compilar.sh              # gera relatorio.pdf
-./compilar_apresentacao.sh # gera apresentacao.pdf
+cd docs/relatorio/ && ./compilar.sh              # gera relatorio.pdf
+cd docs/apresentacao/ && ./compilar_apresentacao.sh
+# ou, da raiz:
+./dev.sh relatorio
+./dev.sh apresentacao
 ```

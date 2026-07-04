@@ -1,0 +1,33 @@
+{
+  "tile": "tile_0757.jpg",
+  "revisado": false,
+  "deteccoes": [
+    {
+      "id": 200,
+      "label": "lixo",
+      "bbox": [
+        0,
+        1436,
+        164,
+        159
+      ],
+      "area": 12948.0,
+      "circular": 0.4398,
+      "fill": 0.2287
+    },
+    {
+      "id": 201,
+      "label": "lixo",
+      "bbox": [
+        213,
+        773,
+        144,
+        165
+      ],
+      "area": 11794.0,
+      "circular": 0.3487,
+      "fill": 0.2711
+    }
+  ],
+  "faltantes": []
+}

@@ -34,14 +34,21 @@
     commentstyle=\color{green!60!black},
 }
 
+% Marcador para conteúdo ainda pendente da frente de redes neurais.
+\newcommand{\pendente}[1]{\textit{\textcolor{red}{[Pendente: #1]}}}
+
 % ─────────────────────────────────────────────────────────────────────────────
 \title{
-    \textbf{Detecção de Árvores \textit{Cecropia} (Embaúba) em\\
-    Mosaico Aéreo com Visão Computacional Clássica}\\[0.5em]
+    \textbf{Detecção e Segmentação de Copas de \textit{Cecropia}
+    (Embaúba) em Ortomosaico de VANT}\\[0.4em]
+    \large Duas abordagens: Visão Computacional Clássica e
+    Redes Neurais (SAM 3 + YOLOv8)\\[0.6em]
     \large INE5443 — Reconhecimento de Padrões \\ UFSC
 }
-\author{Augusto H. V. Guerner}
-\date{Junho de 2026}
+\author{Grupo 10 \\[0.3em]
+\small Gabriel Arantes F. Gualda \quad Fábio H. A. Coelho \quad Nena A. Impanta\\
+\small Augusto de H. V. Guerner \quad Eduardo G. de Lazari}
+\date{Julho de 2026}
 % ─────────────────────────────────────────────────────────────────────────────
 
 \begin{document}
@@ -52,27 +59,147 @@
 
 \section{Introdução}
 
-A \textit{Cecropia} (popularmente conhecida como embaúba) é um gênero de árvore
-pioneira amplamente distribuído em ambientes tropicais e subtropicais
-brasileiros. Sua presença em áreas de vegetação secundária é um indicador de
-regeneração florestal, tornando-a de interesse em estudos de cobertura vegetal e
-dinâmica de paisagem.
+O conhecimento detalhado sobre árvores individuais — sua identificação,
+distribuição espacial e desenvolvimento ao longo do tempo — constitui base
+fundamental para a pesquisa botânica, o manejo florestal e a conservação da
+biodiversidade (Wielgosz et al., 2024; Fassnacht et al., 2016). Tradicionalmente,
+essas informações são obtidas por inventários de campo que, embora eficazes,
+apresentam custos elevados, complexidade logística e demanda por mão de obra
+especializada, limitando a frequência e a escala em que podem ser conduzidos
+(Ferretti et al., 2024). Essa limitação torna-se ainda mais relevante diante do
+compromisso global da Década da Restauração de Ecossistemas (2021–2030), que
+amplia a demanda por ferramentas capazes de acompanhar a evolução de áreas
+florestais de forma eficiente (De Almeida et al., 2020).
 
-Este trabalho apresenta um pipeline de visão computacional clássica, sem uso de
-aprendizado profundo, para detecção automática de indivíduos de \textit{Cecropia}
-em um mosaico aéreo de alta resolução. A abordagem utiliza segmentação por espaço
-de cor HSV, operações morfológicas, filtragem geométrica por contorno e um
-filtro final por área/circularidade, processada em paralelo sobre 992
-\textit{tiles} do mosaico.
+Nesse contexto, os Veículos Aéreos Não Tripulados (VANTs) consolidaram-se como
+ferramenta de alta relevância para o monitoramento florestal. Imagens com
+resolução espacial na ordem de centímetros viabilizam a observação de
+características morfológicas individuais das plantas — formato e coloração das
+copas, padrões de ramificação e textura foliar — em nível de detalhe inviável com
+imagens de satélite convencionais (Soltani et al., 2025). Contudo, a
+disponibilidade de imagens de alta resolução, por si só, não resolve o problema do
+monitoramento em larga escala: a análise visual de ortomosaicos por especialistas
+torna-se inviável quando a área de estudo se amplia para dezenas ou centenas de
+hectares.
 
-\section{Dataset}
+Este trabalho aborda o problema da detecção e segmentação de copas de
+\textit{Cecropia pachystachya} (embaúba) em um ortomosaico de VANT por meio de
+\textbf{duas frentes complementares}:
 
-O mosaico aéreo foi dividido em tiles JPEG de resolução fixa. A Tabela
-\ref{tab:dataset} resume as características do dataset.
+\begin{itemize}
+    \item \textbf{Parte I — Visão Computacional Clássica.} Um pipeline sem
+    aprendizado profundo, baseado em segmentação por espaço de cor HSV, operações
+    morfológicas, extração de contornos e filtros geométricos. É interpretável,
+    auditável e computacionalmente leve, servindo como \textit{baseline} e como
+    primeira estimativa da distribuição espacial da espécie.
+
+    \item \textbf{Parte II — Redes Neurais (SAM 3 + YOLOv8).} Um pipeline
+    semi-automatizado que integra o modelo fundacional de segmentação
+    Segment Anything Model 3 (SAM 3) com o detector YOLOv8, reduzindo o esforço de
+    anotação manual por meio de uma estratégia de ``curadoria por exclusão'' e
+    permitindo detecção e segmentação individuais das copas em escala.
+\end{itemize}
+
+Ambas as frentes operam sobre o \textbf{mesmo ortomosaico} do experimento MataDIV
+(mesma área, mesmo sistema de referência e mesma resolução espacial), o que
+permite comparar diretamente as duas estratégias. A abordagem clássica evidencia
+até onde é possível chegar com regras explícitas de cor e forma, enquanto a
+abordagem neural mostra os ganhos e os custos de incorporar aprendizado de máquina
+ao problema.
+
+A espécie-alvo, \textit{Cecropia pachystachya} Trécul (Urticaceae), é uma árvore
+pioneira de rápido crescimento, amplamente distribuída nas florestas tropicais e
+subtropicais da região Neotropical (Berg et al., 2005). Ecologicamente, sua
+presença e abundância estão associadas à intensidade de perturbações florestais,
+o que a estabelece como indicadora do estágio de regeneração de uma área (Guitet
+et al., 2018). Além disso, apresenta características morfológicas que favorecem sua
+detecção em imagens aéreas — folhas grandes e palmatilobadas, coloração
+verde-prateada na face abaxial e copa de arquitetura umbeliforme distinta das
+demais espécies do dossel (Carvalho, 2008). A conjunção entre relevância ecológica
+e distinguibilidade visual motivou sua escolha como modelo biológico para este
+estudo.
+
+\section{Objetivos}
+
+\subsection*{Objetivo geral}
+
+Desenvolver e avaliar metodologias para detecção e segmentação individual de copas
+de \textit{Cecropia pachystachya} em ortomosaico de VANT, comparando uma abordagem
+de visão computacional clássica com uma abordagem de redes neurais que integra o
+SAM 3 e o YOLOv8, com ênfase na redução do esforço manual.
+
+\subsection*{Objetivos específicos}
+
+\begin{itemize}
+    \item Construir um pipeline clássico interpretável (HSV, morfologia,
+    contornos e filtros geométricos) e avaliá-lo quanto a precisão, recall e
+    custo computacional.
+    \item Desenvolver um pipeline semi-automatizado de detecção e segmentação com
+    SAM 3, minimizando as etapas manuais de criação do dataset e treinamento do
+    modelo.
+    \item Avaliar o desempenho do pipeline neural na detecção e segmentação de
+    copas de \textit{C. pachystachya} em diferentes cenários de composição
+    florestal do experimento MataDIV.
+    \item Discutir a replicabilidade das duas abordagens para a detecção e
+    segmentação de outras espécies arbóreas.
+\end{itemize}
+
+\section{Área de Estudo e Coleta de Dados}
+\label{sec:area}
+
+\subsection{Área de estudo}
+
+O estudo foi conduzido no experimento MataDIV (Mata Atlântica Diversidade),
+localizado na Estação Experimental de Ciências Florestais de Itatinga, pertencente
+à Escola Superior de Agricultura ``Luiz de Queiroz'' (ESALQ/USP), no município de
+Itatinga, São Paulo, Brasil (23\textdegree06'S, 48\textdegree39'W). O MataDIV é um
+experimento de diversidade arbórea e funcionamento ecossistêmico (BEF) integrado à
+rede global TreeDivNet, plantado em 2019 em uma área de antigo talhão comercial de
+\textit{Eucalyptus} (Verheyen et al., 2016; Paquette et al., 2018).
+
+O experimento manipula três variáveis (riqueza de espécies, fertilização e
+disponibilidade hídrica) em 144 parcelas experimentais que ocupam aproximadamente
+8 hectares. Cada parcela possui dimensões de 20~m $\times$ 23~m e contém 100
+árvores plantadas em espaçamento de 2,3~m, totalizando cerca de 14.400 indivíduos.
+As composições combinam seis espécies nativas de estratégias ecológicas
+contrastantes em 12 estratos distintos — de monoculturas a uma composição de alta
+diversidade com 20 espécies. A \textit{Cecropia pachystachya} está presente em
+cinco dessas composições, com densidade que varia de 100 indivíduos por parcela na
+monocultura a aproximadamente 5 indivíduos nas parcelas de alta diversidade. Essa
+variedade torna o MataDIV particularmente adequado para avaliar a robustez das
+metodologias sob diferentes condições de complexidade do dossel.
+
+\subsection{Coleta de dados e ortomosaico}
+\label{sec:ortomosaico}
+
+O sobrevoo foi realizado em 13 de março de 2026 com o VANT DJI Matrice 4T,
+equipado com câmera RGB wide (sensor CMOS 1/1.3'', 48~MP, distância focal
+equivalente a 24~mm, campo de visão de 82\textdegree). A coleta ocorreu a 23~m
+acima do nível do solo, com sobreposição frontal e lateral de 80\%, resultando em
+uma resolução espacial no solo (GSD) de aproximadamente 0,85~cm/pixel. As imagens
+foram processadas por fotogrametria digital no software Agisoft Metashape,
+gerando um ortomosaico georreferenciado de 48.264 $\times$ 47.029 pixels, com
+quatro bandas espectrais (R, G, B e alfa), aproximadamente 8,46~GB em GeoTIFF,
+projetado em SIRGAS 2000 / UTM zona 22S (EPSG:31982).
+
+Esse único ortomosaico é a base de dados comum às duas frentes deste trabalho. A
+diferença entre elas está na forma como o ortomosaico é recortado em \textit{tiles}
+e nos artefatos de referência utilizados, descritos no início de cada parte.
+
+% ═════════════════════════════════════════════════════════════════════════════
+\part{Solução com Visão Computacional Clássica}
+% ═════════════════════════════════════════════════════════════════════════════
+
+\section{Dataset (Recorte para a Abordagem Clássica)}
+\label{sec:dataset-classico}
+
+Para a abordagem clássica, o ortomosaico (Seção~\ref{sec:ortomosaico}) foi
+dividido em \textit{tiles} JPEG de resolução fixa. A Tabela~\ref{tab:dataset}
+resume as características desse recorte.
 
 \begin{table}[H]
 \centering
-\caption{Características do dataset.}
+\caption{Características do dataset da abordagem clássica.}
 \label{tab:dataset}
 \begin{tabular}{ll}
 \toprule
@@ -101,7 +228,7 @@ manualmente. Cada JSON armazena a saída do detector em \texttt{embaubas}, os
 índices marcados como falso positivo em \texttt{falsos\_positivos} e caixas
 \texttt{faltantes} para copas visíveis que não foram detectadas.
 
-\section{Pipeline de Detecção}
+\section{Pipeline de Detecção Clássico}
 
 O pipeline foi organizado como uma sequência de etapas clássicas de visão
 computacional porque a embaúba possui um sinal visual relativamente
@@ -120,9 +247,9 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=\textwidth]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Visualização das imagens de inspeção do pipeline sobre
-             \texttt{tile\_0635.jpg}. Da esquerda para a direita, de cima para
+             \texttt{tile\_0634.jpg}. Da esquerda para a direita, de cima para
              baixo: imagem original, blur gaussiano, canal H, canal S, canal V,
              máscara bruta, máscara limpa e resultado final.}
     \label{fig:pipeline}
@@ -132,7 +259,7 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={472bp 486bp 945bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={472bp 486bp 945bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Imagem suavizada com filtro gaussiano.}
     \label{fig:etapa-blur}
 \end{figure}
@@ -152,19 +279,19 @@ filtro preserva a estrutura geral das copas, mas atenua detalhes muito pequenos.
     \centering
     \begin{subfigure}[b]{0.31\textwidth}
         \centering
-        \includegraphics[width=\textwidth, trim={945bp 486bp 472bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \includegraphics[width=\textwidth, trim={945bp 486bp 472bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
         \caption{Canal H.}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.31\textwidth}
         \centering
-        \includegraphics[width=\textwidth, trim={1417bp 486bp 0bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \includegraphics[width=\textwidth, trim={1417bp 486bp 0bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
         \caption{Canal S.}
     \end{subfigure}
     \hfill
     \begin{subfigure}[b]{0.31\textwidth}
         \centering
-        \includegraphics[width=\textwidth, trim={0bp 0bp 1417bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+        \includegraphics[width=\textwidth, trim={0bp 0bp 1417bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
         \caption{Canal V.}
     \end{subfigure}
     \caption{Canais HSV extraídos após a suavização.}
@@ -183,7 +310,7 @@ RGB, pois separa a informação de matiz da luminosidade.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={472bp 0bp 945bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={472bp 0bp 945bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Máscara bruta produzida pela faixa HSV.}
     \label{fig:etapa-limiarizacao}
 \end{figure}
@@ -208,7 +335,7 @@ Pixels cujos valores HSV estão dentro desse intervalo recebem valor 255 na
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Máscara após operações morfológicas, com regiões internas mais coesas.}
     \label{fig:etapa-close}
 \end{figure}
@@ -227,7 +354,7 @@ fragmentos próximos em regiões coesas que representam copas individuais.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Máscara limpa após remoção de pequenos componentes.}
     \label{fig:etapa-open}
 \end{figure}
@@ -245,7 +372,7 @@ regiões maiores já consolidadas pelo fechamento.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Regiões conectadas convertidas em candidatos desenhados sobre a imagem.}
     \label{fig:etapa-contornos}
 \end{figure}
@@ -263,7 +390,7 @@ contornos sem afetar a área estimada.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Candidatos remanescentes após descarte de regiões pequenas.}
     \label{fig:etapa-area}
 \end{figure}
@@ -280,7 +407,7 @@ etapas morfológicas, mantendo apenas regiões compatíveis com copas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Resultado final depois dos filtros de tamanho, circularidade e solidez.}
     \label{fig:etapa-filtro-final}
 \end{figure}
@@ -302,7 +429,7 @@ fragmentadas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0635.png}
+    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
     \caption{Contorno final representado pelo fecho convexo da região detectada.}
     \label{fig:etapa-hull}
 \end{figure}
@@ -317,7 +444,7 @@ sombras ou sobreposição de folhas, e aproxima melhor o perímetro circular da
 \textit{Cecropia} vista de cima. O hull é desenhado sobre a imagem original para
 visualização.
 
-\section{Resultados}
+\section{Resultados da Abordagem Clássica}
 
 \subsection{Estatísticas Gerais}
 
@@ -413,7 +540,7 @@ tile\_0634.jpg & 13 & 1.027.336 & 73,87 & 25,04\% \\
 tile\_0666.jpg & 13 & 1.271.576 & 91,43 & 30,57\% \\
 tile\_0633.jpg & 12 &   796.373 & 57,26 & 20,03\% \\
 tile\_0488.jpg & 11 & 1.224.788 & 88,07 & 29,33\% \\
-tile\_0635.jpg & 11 &   964.494 & 69,35 & 23,86\% \\
+tile\_0634.jpg & 11 &   964.494 & 69,35 & 23,86\% \\
 tile\_0753.jpg & 11 &   668.577 & 48,07 & 20,78\% \\
 tile\_0875.jpg & 11 &   819.124 & 58,90 & 21,62\% \\
 tile\_0435.jpg & 10 &   966.308 & 69,48 & 24,23\% \\
@@ -432,7 +559,7 @@ positivos e as caixas \texttt{faltantes} contam como falsos negativos.
 
 \begin{table}[H]
 \centering
-\caption{Resumo da validação manual.}
+\caption{Resumo da validação manual (abordagem clássica).}
 \label{tab:validacao}
 \begin{tabular}{lr}
 \toprule
@@ -472,7 +599,7 @@ cor fora da faixa definida.
         \caption{Uso de memória por tile.}
         \label{fig:memoria}
     \end{subfigure}
-    \caption{Métricas de desempenho computacional do pipeline.}
+    \caption{Métricas de desempenho computacional do pipeline clássico.}
     \label{fig:desempenho}
 \end{figure}
 
@@ -483,7 +610,7 @@ matriciais do OpenCV que mantêm apenas a imagem corrente em memória. O passo a
 passo foi amostrado em tiles selecionados, reduzindo o custo de geração das
 figuras.
 
-\section{Interpretação e Limitações}
+\section{Interpretação e Limitações da Abordagem Clássica}
 
 \subsection{Alta taxa de tiles com detecções (86,1\%)}
 
@@ -495,7 +622,7 @@ similar também ativam a máscara.
 
 \subsection{Falsos positivos por confusão espectral}
 
-A inspeção visual do \texttt{tile\_0635.jpg} (Figura~\ref{fig:pipeline})
+A inspeção visual do \texttt{tile\_0634.jpg} (Figura~\ref{fig:pipeline})
 evidencia o principal problema do método: a segmentação HSV não distingue
 \textit{Cecropia} de outras plantas com tom similar. No canal H (matiz),
 praticamente toda a vegetação do tile cai dentro do intervalo $[44, 58]$,
@@ -532,36 +659,396 @@ circularidade e solidez reduziu bem os falsos positivos na amostra revisada. O
 recall de 52,4\%, por outro lado, mostra que muitas copas reais ainda não entram
 na saída final, principalmente por dependerem de uma faixa HSV fixa.
 
-\section{Conclusões}
+% ═════════════════════════════════════════════════════════════════════════════
+\part{Solução com Redes Neurais (SAM 3 + YOLOv8)}
+% ═════════════════════════════════════════════════════════════════════════════
 
-O pipeline HSV clássico demonstrou ser viável para uma primeira estimativa da
-distribuição espacial de \textit{Cecropia} em mosaicos aéreos: é eficiente,
-escalável via paralelismo e produz resultados interpretáveis pelas visualizações
-passo a passo. O total de 1.218 detecções em 361 tiles indica presença
-consistente de vegetação dentro da faixa espectral buscada.
+A segunda frente do trabalho substitui as regras explícitas de cor e forma por um
+pipeline semi-automatizado de aprendizado de máquina. Ele integra o modelo
+fundacional de segmentação SAM 3 — usado tanto na geração do dataset quanto na
+segmentação final das copas — com o detector YOLOv8, responsável pela localização
+dos indivíduos. A ideia central é reduzir ao máximo o esforço de anotação manual,
+que costuma ser a etapa mais custosa em abordagens supervisionadas.
 
-A validação manual mostrou que o filtro final reduz fortemente os falsos
-positivos, chegando a 84,6\% de precisão. Ainda assim, o recall de 52,4\%
-indica que há embaúbas que escapam tanto na geração de candidatos quanto no
-filtro final.
+\section{Metodologia da Abordagem Neural}
 
-\subsection*{Melhorias possíveis}
+A metodologia proposta é composta por seis etapas sequenciais (Figura~\ref{fig:fluxo-dl}):
+(1) geração do dataset com SAM 3 \textit{text prompt}, (2) divisão espacial do
+dataset, (3) correção semi-automatizada das anotações, (4) treinamento do YOLOv8x,
+(5) inferência e pós-processamento e (6) segmentação das copas com SAM 3 por
+\textit{prompt} geométrico.
 
-Para aumentar a precisão sem recorrer a deep learning, as seguintes extensões
-são recomendadas:
+\begin{figure}[H]
+    \centering
+    \pendente{Figura --- Fluxograma geral do pipeline semi-automatizado com as seis etapas.}
+    \caption{Fluxograma geral do pipeline semi-automatizado (SAM 3 + YOLOv8).}
+    \label{fig:fluxo-dl}
+\end{figure}
+
+\subsection{Contexto: SAM 3 e curadoria por exclusão}
+
+Avanços recentes em modelos fundacionais de segmentação oferecem uma alternativa à
+anotação manual. O Segment Anything Model (SAM), desenvolvido pela Meta AI, é
+treinado em um conjunto de mais de um bilhão de máscaras, sendo capaz de segmentar
+objetos em domínios para os quais nunca foi especificamente treinado, como
+ortomosaicos de VANT (Kirillov et al., 2023). Sua terceira versão, o SAM 3,
+introduziu a segmentação a partir de \textit{prompts} textuais: ao receber a
+palavra ``tree'', por exemplo, o modelo delineia exclusivamente as copas de
+árvores presentes na imagem.
+
+Essa funcionalidade permite repensar a geração de dados de treinamento. Em vez de
+desenhar manualmente cada anotação, o pesquisador utiliza o SAM 3 para gerar
+candidatos de segmentação e, em seguida, realiza uma \textbf{curadoria por
+exclusão}, removendo apenas os segmentos que não correspondem à espécie de
+interesse. O esforço humano deixa de ser criar anotações do zero e passa a ser
+filtrar um conjunto pré-existente — tarefa significativamente mais rápida e que
+demanda apenas o reconhecimento da espécie-alvo.
+
+\subsection{Geração do dataset de treinamento}
+
+O ortomosaico georreferenciado foi recortado em tiles de 4.096 $\times$ 4.096
+pixels com sobreposição de 1.024 pixels e submetido ao SAM 3 com o \textit{prompt}
+textual ``tree''. O modelo segmentou automaticamente as copas presentes em cada
+tile, gerando 4.569 polígonos referentes a diversas espécies. Como a área coberta
+pelo ortomosaico ultrapassa os limites do experimento MataDIV, parte dos polígonos
+corresponde a indivíduos no entorno da área experimental.
+
+Os polígonos foram carregados no ambiente SIG (QGIS), onde o operador realizou a
+curadoria por exclusão: cada polígono foi avaliado visualmente e os que não
+correspondiam a \textit{C. pachystachya} foram removidos. Ao final, restaram
+\textbf{1.109 máscaras} da espécie-alvo, das quais 975 dentro dos limites do
+MataDIV e 134 no entorno. A partir das máscaras curadas, caixas delimitadoras
+(\textit{bounding boxes}) foram geradas automaticamente no QGIS pela ferramenta de
+geometria envolvente, sem intervenção manual no traçado.
+
+Essas máscaras cumprem dupla função: servem de base para o dataset de detecção
+(via \textit{bounding boxes}) e, simultaneamente, constituem o produto final de
+segmentação para os indivíduos identificados nesta fase. As 975 cecropias
+segmentadas dentro do MataDIV já possuem suas copas delineadas e não necessitam de
+segmentação adicional.
+
+Para o treinamento do detector, o ortomosaico foi recortado em tiles de 896
+$\times$ 896 pixels com sobreposição de 50\%. O tamanho do tile foi definido com
+base na maior copa de \textit{Cecropia} identificada, garantindo que nenhum tile
+fosse menor que uma copa inteira e que o modelo recebesse contexto espacial
+suficiente. A sobreposição de 50\% faz um mesmo indivíduo aparecer em múltiplos
+tiles em posições distintas, funcionando como aumento de dados implícito. Dessa
+forma, os 1.109 indivíduos únicos geraram \textbf{7.488 instâncias} de treinamento
+(fator de repetição médio de 6,8 vezes por indivíduo). As coordenadas dos polígonos
+foram convertidas para o formato de anotação YOLO, com vértices normalizados entre
+0 e 1.
+
+\subsection{Divisão espacial do dataset}
+
+O dataset foi dividido em treinamento (70\%), validação (15\%) e teste (15\%). Em
+imagens de sensoriamento remoto com sobreposição entre tiles, a amostragem
+aleatória simples pode causar \textit{vazamento de dados} (\textit{data leakage}),
+com um mesmo indivíduo presente simultaneamente em treinamento e teste, inflando
+artificialmente as métricas (Roberts et al., 2017; Kattenborn et al., 2022). Para
+evitar isso, foi implementado um algoritmo de divisão baseado em clusterização
+espacial, em quatro etapas:
 
 \begin{enumerate}
-    \item \textbf{Refinamento do intervalo HSV:} amostrar pixels de indivíduos
-    anotados manualmente para ajustar os limiares com base em dados reais,
-    reduzindo a sobreposição espectral com outras espécies.
-    \item \textbf{Consolidação entre tiles:} unir ou deduplicar detecções em
-    regiões de sobreposição para evitar contagens repetidas.
-    \item \textbf{Ajuste dos filtros geométricos:} recalibrar área,
-    circularidade e solidez com mais tiles revisados para aumentar recall sem
-    perder muita precisão.
-    \item \textbf{Análise de textura:} incorporar descritores de textura (LBP,
-    Haralick) para diferenciar a estrutura radial das folhas de \textit{Cecropia}
-    de outras copas.
+    \item Cada anotação é associada ao tile cujo centroide está mais próximo,
+    estabelecendo uma relação unívoca entre anotação e tile.
+    \item Anotações que intersectam mais de um tile com sobreposição superior a
+    20\% da área da anotação vinculam os tiles envolvidos, pois compartilham o
+    mesmo indivíduo.
+    \item Os vínculos entre tiles formam um grafo, no qual componentes conexos são
+    identificados por busca em largura (BFS), definindo \textit{clusters} de tiles
+    que devem pertencer ao mesmo conjunto.
+    \item Os \textit{clusters} são distribuídos entre treinamento, validação e
+    teste por otimização estocástica de Monte Carlo (1.000 iterações), minimizando
+    o erro quadrático médio (MSE) entre as proporções obtidas e as metas de
+    70/15/15.
+\end{enumerate}
+
+\subsection{Correção semi-automatizada das anotações}
+
+Um primeiro ciclo de treinamento revelou, na matriz de confusão, que parte dos
+falsos negativos correspondia a indivíduos reais de \textit{C. pachystachya}
+presentes nas imagens, porém ausentes nas anotações geradas pelo SAM 3. Para
+corrigir isso, o modelo treinado foi aplicado sobre os conjuntos de validação e
+teste, e cada detecção foi comparada às anotações existentes por Intersecção sobre
+União (IoU). Detecções com IoU inferior a 0,5 em relação a qualquer anotação foram
+consideradas potenciais indivíduos não anotados. Para cada imagem, foi gerada uma
+visualização com as anotações existentes em verde e as detecções sem correspondência
+em vermelho (Figura~\ref{fig:correcao-dl}), permitindo ao operador avaliar cada caso.
+
+\begin{figure}[H]
+    \centering
+    \pendente{Figura --- Imagem de teste com anotações existentes (verde) e detecções sem correspondência (vermelho).}
+    \caption{Procedimento semi-automatizado de complementação de anotações.}
+    \label{fig:correcao-dl}
+\end{figure}
+
+No conjunto de teste, das 163 detecções sem correspondência, 157 foram confirmadas
+como cecropias genuínas e apenas 6 descartadas como falsos positivos. No conjunto
+de validação, 144 novas anotações foram incorporadas e 2 descartadas. Após o
+\textit{merge} das novas anotações, o modelo foi retreinado com os conjuntos
+corrigidos. A correção foi aplicada apenas aos conjuntos de validação e teste (cerca
+de 160 imagens cada), por serem menores; o mesmo procedimento pode ser estendido ao
+conjunto de treinamento (776 imagens) para melhorar ainda mais as métricas. A
+Tabela~\ref{tab:dataset-dl} apresenta a estrutura final do dataset.
+
+\begin{table}[H]
+\centering
+\caption{Estrutura final do dataset da abordagem neural.}
+\label{tab:dataset-dl}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Conjunto} & \textbf{Imagens} & \textbf{Instâncias (original)} & \textbf{Instâncias (corrigido)} \\
+\midrule
+Treinamento & 776   & 6.300 & 6.300 (sem alteração) \\
+Validação   & 167   & 543   & 687 (+144) \\
+Teste       & 166   & 645   & 799 (+154) \\
+\midrule
+Total       & 1.109 & 7.488 & 7.786 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Treinamento do modelo de detecção}
+
+A detecção foi conduzida com o YOLOv8x, a variante de maior capacidade da família
+YOLOv8, implementada via biblioteca Ultralytics (Jocher et al., 2023). Optou-se
+pela versão de detecção (e não a de segmentação de instâncias), uma vez que o
+SAM 3 é responsável pela delineação das copas nas etapas inicial e final; ao YOLO
+cabe exclusivamente a localização dos indivíduos por caixas delimitadoras.
+
+Como o desempenho de modelos de \textit{deep learning} é sensível à configuração
+dos hiperparâmetros, adotou-se uma otimização bayesiana com o \textit{framework}
+Optuna (Akiba et al., 2019) e o amostrador TPE (\textit{Tree-structured Parzen
+Estimator}). O espaço de busca contemplou 21 hiperparâmetros em três categorias:
+parâmetros do otimizador, pesos da função de perda e parâmetros de aumento de dados
+(Tabela~\ref{tab:hiperparametros}). A otimização foi conduzida ao longo de 30
+tentativas com 20 épocas cada, utilizando o mAP50 no conjunto de validação como
+métrica de orientação, com \textit{batch size} 8 e imagem de 896 $\times$ 896.
+
+\begin{table}[H]
+\centering
+\caption{Espaço de busca dos hiperparâmetros otimizados.}
+\label{tab:hiperparametros}
+\small
+\begin{tabular}{p{3.6cm} p{6.6cm} r r}
+\toprule
+\textbf{Hiperparâmetro} & \textbf{Funcionalidade} & \textbf{Inf.} & \textbf{Sup.} \\
+\midrule
+\multicolumn{4}{l}{\textit{Categoria: Hiperparâmetros do otimizador}} \\
+\midrule
+Freeze Layers      & Número de camadas sem atualização de pesos       & 0      & 21 \\
+Learning Rate (lr0)& Taxa de aprendizagem inicial                     & 1e-05  & 0,01 \\
+Final LR Factor (lrf)& Fator de decaimento final do learning rate     & 0,01   & 1,0 \\
+Momentum           & Inércia do otimizador                            & 0,6    & 0,98 \\
+Weight Decay       & Penaliza pesos grandes (evita overfitting)       & 0,0001 & 0,001 \\
+Warmup Epochs      & Épocas iniciais com learning rate crescente      & 0      & 5 \\
+\midrule
+\multicolumn{4}{l}{\textit{Categoria: Pesos da função de perda}} \\
+\midrule
+Box Loss Weight    & Peso da perda de localização da bounding box     & 0,02   & 0,2 \\
+Class Loss Weight  & Peso da perda de classificação                   & 0,2    & 4,0 \\
+\midrule
+\multicolumn{4}{l}{\textit{Categoria: Aumento de dados (data augmentation)}} \\
+\midrule
+HSV Hue Aug.       & Alteração da tonalidade da imagem                & 0      & 0,1 \\
+HSV Sat. Aug.      & Alteração da saturação da imagem                 & 0      & 0,9 \\
+HSV Val. Aug.      & Alteração do brilho da imagem                    & 0      & 0,9 \\
+Rotation (deg)     & Transformação geométrica de rotação              & 0      & 45 \\
+Translation        & Transformação geométrica de translação           & 0      & 0,9 \\
+Scale Aug.         & Transformação geométrica de escala               & 0      & 0,9 \\
+Shear (deg)        & Transformação geométrica de cisalhamento         & 0      & 10 \\
+Perspective        & Transformação geométrica de perspectiva          & 0      & 0,001 \\
+Flip Up-Down       & Espelhamento vertical da imagem                  & 0      & 1 \\
+Flip Left-Right    & Espelhamento horizontal da imagem                & 0      & 1 \\
+Mosaic             & Combinação de 4 imagens em 1                     & 0      & 1 \\
+MixUp              & Sobreposição de duas imagens com transparência   & 0      & 1 \\
+Copy-Paste         & Cópia de segmentos de uma imagem para outra      & 0      & 1 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Além da seleção dos melhores valores, os resultados das 30 tentativas foram usados
+como entrada para um regressor \textit{Random Forest} de 500 árvores, cuja
+importância de cada hiperparâmetro foi estimada pela Redução Média da Impureza
+(\textit{Mean Decrease Impurity}), permitindo compreender quais variáveis mais
+influenciam o desempenho. Concluída a otimização, o treinamento final foi realizado
+com 500 épocas, imagem de 896 pixels, \textit{batch size} 8 e otimizador AdamW,
+adotando os hiperparâmetros da melhor tentativa.
+
+\subsection{Inferência e pós-processamento}
+
+O modelo treinado foi aplicado sobre o ortomosaico completo, recortado em tiles de
+896 $\times$ 896 pixels com sobreposição de 50\%. Para detectar adequadamente
+indivíduos nas bordas entre tiles, a inferência foi conduzida em duas rodadas: uma
+com os tiles na grade regular e outra com tiles deslocados em meio passo (offset de
+50\%), de modo que regiões de borda na primeira rodada ficassem centralizadas na
+segunda.
+
+Detecções a menos de 10 pixels da borda do tile foram descartadas. Em seguida, as
+detecções das duas rodadas foram combinadas e submetidas a remoção de duplicatas:
+pares com sobreposição espacial superior a 10\% da menor área foram identificados e,
+em cada par, a detecção de menor confiança foi descartada. Após a deduplicação,
+foram aplicadas regras de filtragem: descarte de detecções com confiança inferior a
+0,65 ou área inferior a 1,75~m² ou superior a 40~m², além da exclusão de detecções
+fora dos limites do MataDIV.
+
+As detecções resultantes foram cruzadas espacialmente com as máscaras do SAM 3
+(Seção da geração do dataset), classificando os indivíduos em três categorias:
+(i) detectados pelo YOLO e já com máscara prévia do SAM 3; (ii) detectados
+exclusivamente pelo YOLO, sem máscara prévia; e (iii) segmentados pelo SAM 3 na
+etapa inicial, mas não detectados pelo YOLO. Os indivíduos das categorias (i) e
+(iii) já dispõem de segmentação; os da categoria (ii) seguem para a segmentação
+refinada descrita a seguir.
+
+\subsection{Segmentação das copas com SAM 3 por prompt geométrico}
+
+Para segmentar as copas dos indivíduos detectados exclusivamente pelo YOLO,
+utilizou-se novamente o SAM 3, agora com \textit{prompt} geométrico: a
+\textit{bounding box} detectada é fornecida como entrada para orientar a
+segmentação. Recorta-se do ortomosaico uma região ao redor de cada caixa, com uma
+margem de expansão (\textit{padding}) que fornece contexto espacial, e o recorte
+georreferenciado é submetido ao SAM 3. Quando o modelo produz múltiplas máscaras
+candidatas, adota-se um critério de seleção central (máscara cujo centroide está
+mais próximo do centro do recorte). As máscaras selecionadas são convertidas em
+polígonos vetoriais georreferenciados e submetidas a operações de limpeza
+morfológica. Os parâmetros adotados estão na Tabela~\ref{tab:seg-params}.
+
+\begin{table}[H]
+\centering
+\caption{Parâmetros da segmentação por prompt geométrico com SAM 3.}
+\label{tab:seg-params}
+\begin{tabular}{ll}
+\toprule
+\textbf{Parâmetro} & \textbf{Valor adotado} \\
+\midrule
+Padding ao redor da bbox & 300 cm \\
+Área mínima do polígono  & 0,3 m² \\
+Confiança do SAM 3       & 0,25 \\
+Estratégia de seleção    & Central (centroide mais próximo do centro) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Os polígonos resultantes foram integrados ao conjunto de máscaras da segmentação
+inicial por \textit{prompt} textual, compondo o mapeamento final de copas de
+\textit{C. pachystachya} na área do MataDIV.
+
+\subsection{Métricas de avaliação}
+
+O desempenho do detector foi avaliado no conjunto de teste, classificando cada
+detecção como Verdadeiro Positivo (VP), Falso Positivo (FP) ou Falso Negativo (FN).
+A correspondência espacial entre a caixa predita e a anotação de referência é
+medida pela Intersecção sobre União (IoU), com limiar de 0,5:
+
+\begin{equation}
+    \text{IoU} = \frac{\text{Área da Interseção}}{\text{Área da União}}
+\end{equation}
+
+A partir da contagem de VP, FP e FN, calculam-se:
+
+\begin{equation}
+    P = \frac{VP}{VP + FP}, \qquad
+    R = \frac{VP}{VP + FN}, \qquad
+    F_1 = \frac{2 \cdot P \cdot R}{P + R}
+\end{equation}
+
+A Average Precision (AP) é a área sob a curva Precision-Recall,
+$AP = \int_{0}^{1} P(R)\, dR$. Como há apenas uma classe
+(\textit{Cecropia pachystachya}), o mAP equivale à própria AP; manteve-se a
+notação mAP50 por ser padrão na biblioteca Ultralytics. Utilizou-se também o
+mAP50-95, média da AP em dez limiares de IoU igualmente espaçados entre 0,5 e 0,95,
+que penaliza detecções com baixa sobreposição espacial e exige maior precisão na
+localização.
+
+\section{Resultados da Abordagem Neural}
+
+\pendente{Esta seção depende dos resultados quantitativos do pipeline SAM 3 + YOLOv8,
+que ainda não constam no material fornecido (o relatório da frente neural termina em
+``Métricas de avaliação''). Preencher com: métricas de detecção no conjunto de teste
+(Precisão, Recall, F1, mAP50, mAP50-95), curvas Precision-Recall e de treinamento,
+importância dos hiperparâmetros (Random Forest / Mean Decrease Impurity), contagem
+final de indivíduos mapeados por categoria (i/ii/iii) e figuras qualitativas de
+detecção e segmentação sobre o ortomosaico.}
+
+% ═════════════════════════════════════════════════════════════════════════════
+\part{Síntese Comparativa}
+% ═════════════════════════════════════════════════════════════════════════════
+
+\section{Discussão Comparativa}
+
+As duas abordagens atacam o mesmo problema — mapear copas de \textit{Cecropia
+pachystachya} no ortomosaico do MataDIV — por caminhos opostos em termos de
+premissas, custo e capacidade de generalização. A Tabela~\ref{tab:comparativo}
+resume as principais diferenças.
+
+\begin{table}[H]
+\centering
+\caption{Comparação entre as duas abordagens.}
+\label{tab:comparativo}
+\small
+\begin{tabular}{p{4.2cm} p{5.2cm} p{5.2cm}}
+\toprule
+\textbf{Aspecto} & \textbf{Visão Clássica (HSV)} & \textbf{Redes Neurais (SAM 3 + YOLOv8)} \\
+\midrule
+Sinal explorado & Cor (faixa HSV) e forma (área, circularidade, solidez) & Padrões visuais aprendidos (cor, textura, forma) \\
+Anotação & Não requer (revisão manual só para validação) & Curadoria por exclusão sobre máscaras do SAM 3 \\
+Interpretabilidade & Alta: cada etapa é auditável & Baixa: decisão distribuída nos pesos da rede \\
+Custo computacional & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
+Segmentação de copa & Fecho convexo aproximado & Máscara do SAM 3 (polígono refinado) \\
+Discriminação de espécie & Fraca (confusão espectral) & Potencialmente alta (aprende contexto) \\
+Resultado & P 84,6\% / R 52,4\% / F1 64,7\% & \pendente{a definir} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+A abordagem clássica é leve, transparente e não exige anotação, mas esbarra na
+confusão espectral: como diversas espécies caem na mesma faixa de verde, o recall
+fica limitado (52,4\%) e há fusão de copas próximas. A abordagem neural procura
+justamente superar essa limitação, aprendendo padrões visuais que vão além da cor e
+delegando a segmentação fina ao SAM 3. Em contrapartida, exige infraestrutura de
+GPU, um ciclo de treinamento longo e uma etapa (ainda que reduzida) de curadoria.
+
+Vale notar que as duas frentes se complementam metodologicamente: o pipeline
+clássico funciona como \textit{baseline} interpretável e como ferramenta rápida de
+inspeção, enquanto o pipeline neural busca precisão e generalização para outras
+espécies. A estratégia de curadoria por exclusão do SAM 3, em particular, reduz
+drasticamente a barreira de entrada que normalmente inviabiliza o uso de
+aprendizado profundo em contextos botânicos.
+
+\section{Conclusões}
+
+Este trabalho apresentou duas soluções complementares para a detecção e segmentação
+de copas de \textit{Cecropia pachystachya} sobre um mesmo ortomosaico de VANT do
+experimento MataDIV.
+
+A \textbf{abordagem clássica} (Parte I) demonstrou ser viável para uma primeira
+estimativa da distribuição espacial da espécie: é eficiente, escalável por
+paralelismo e produz resultados interpretáveis pelas visualizações passo a passo.
+Foram detectadas 1.218 regiões em 361 tiles válidos, e a validação manual atingiu
+84,6\% de precisão e 52,4\% de recall. O filtro final reduz fortemente os falsos
+positivos, mas o recall limitado revela que a dependência de uma faixa HSV fixa
+deixa escapar copas reais.
+
+A \textbf{abordagem neural} (Parte II) propõe um pipeline semi-automatizado que
+integra o SAM 3 e o YOLOv8, com destaque para a curadoria por exclusão, que reduz o
+esforço de anotação, e para a divisão espacial do dataset, que evita vazamento de
+dados. A metodologia está completa e descrita em detalhe; \pendente{os resultados
+quantitativos da frente neural ainda precisam ser incorporados a partir do material
+final dessa etapa.}
+
+\subsection*{Trabalhos futuros}
+
+\begin{enumerate}
+    \item \textbf{Abordagem clássica:} refinar o intervalo HSV a partir de pixels
+    anotados, consolidar detecções entre tiles para evitar contagens repetidas,
+    recalibrar os filtros geométricos e incorporar descritores de textura (LBP,
+    Haralick) para explorar a estrutura radial das folhas.
+    \item \textbf{Abordagem neural:} concluir a avaliação quantitativa, estender a
+    correção semi-automatizada ao conjunto de treinamento e testar a replicabilidade
+    do pipeline para outras espécies arbóreas.
+    \item \textbf{Integração:} usar o pipeline clássico como pré-filtro rápido e o
+    neural como refinamento, ou comparar as duas saídas para estimar incerteza no
+    mapeamento final.
 \end{enumerate}
 
 \end{document}

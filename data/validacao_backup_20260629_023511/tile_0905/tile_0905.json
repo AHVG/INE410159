@@ -1,0 +1,124 @@
+{
+  "tile": "tile_0905.jpg",
+  "revisado": false,
+  "deteccoes": [
+    {
+      "id": 54,
+      "label": "lixo",
+      "bbox": [
+        949,
+        1905,
+        186,
+        143
+      ],
+      "area": 14212.0,
+      "circular": 0.3483,
+      "fill": 0.2134
+    },
+    {
+      "id": 55,
+      "label": "embauba",
+      "bbox": [
+        1159,
+        1178,
+        426,
+        232
+      ],
+      "area": 44743.0,
+      "circular": 0.2212,
+      "fill": 0.3409
+    },
+    {
+      "id": 56,
+      "label": "lixo",
+      "bbox": [
+        843,
+        1101,
+        193,
+        162
+      ],
+      "area": 14173.5,
+      "circular": 0.3505,
+      "fill": 0.243
+    },
+    {
+      "id": 57,
+      "label": "lixo",
+      "bbox": [
+        961,
+        573,
+        383,
+        258
+      ],
+      "area": 43379.5,
+      "circular": 0.1976,
+      "fill": 0.2494
+    },
+    {
+      "id": 58,
+      "label": "embauba",
+      "bbox": [
+        1599,
+        446,
+        449,
+        642
+      ],
+      "area": 95555.5,
+      "circular": 0.0958,
+      "fill": 0.2576
+    },
+    {
+      "id": 59,
+      "label": "lixo",
+      "bbox": [
+        500,
+        417,
+        308,
+        925
+      ],
+      "area": 93078.5,
+      "circular": 0.0602,
+      "fill": 0.141
+    },
+    {
+      "id": 60,
+      "label": "lixo",
+      "bbox": [
+        267,
+        310,
+        324,
+        399
+      ],
+      "area": 36597.5,
+      "circular": 0.0757,
+      "fill": 0.1212
+    },
+    {
+      "id": 61,
+      "label": "lixo",
+      "bbox": [
+        133,
+        112,
+        244,
+        355
+      ],
+      "area": 40885.5,
+      "circular": 0.1994,
+      "fill": 0.2213
+    },
+    {
+      "id": 62,
+      "label": "embauba",
+      "bbox": [
+        1326,
+        0,
+        562,
+        354
+      ],
+      "area": 137956.0,
+      "circular": 0.4539,
+      "fill": 0.5728
+    }
+  ],
+  "faltantes": []
+}
