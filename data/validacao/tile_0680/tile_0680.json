@@ -1,6 +1,5 @@
 {
   "tile": "tile_0680.jpg",
-  "revisado": true,
   "embaubas": [
     {
       "bbox": [
@@ -94,11 +93,11 @@
       ]
     }
   ],
-  "n_candidatos": 13,
+  "n_candidatos": 99,
   "n_deteccoes": 1,
   "coverage_pct": 10.204887390136719,
-  "tempo_s": 0.069305419921875,
-  "memoria_mb": 64.12383460998535,
+  "tempo_s": 0.27153491973876953,
+  "memoria_mb": 64.18028450012207,
   "falsos_positivos": [
     0
   ],

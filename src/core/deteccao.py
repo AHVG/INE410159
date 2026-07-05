@@ -6,6 +6,7 @@ apenas `cv2` e `numpy`.
 """
 
 import os
+import re
 import time
 import tracemalloc
 import tempfile
@@ -45,23 +46,46 @@ AREA_MAX:    int   = 600_000
 SOL_MIN:     float = 0.48
 
 
+def filtro_forma_tamanho(candidato: dict[str, Any]) -> bool:
+    """Regra de classificação de um candidato como embaúba, por forma e tamanho.
+
+    Reúne todos os critérios geométricos: a área precisa estar na faixa plausível
+    (`AREA_MIN` < área ≤ `AREA_MAX`, descartando manchas minúsculas e blobs
+    fundidos gigantes), a forma tem que ser de copa (grande **ou** pouco circular)
+    e a solidez ≥ `SOL_MIN` (descarta copas ralas). É aplicada dentro de
+    `_pipeline_base`, que grava o resultado na flag ``aceito`` de cada candidato;
+    ``get('solidity', 1.0)`` tolera dicts antigos sem a feature.
+    """
+    forma = candidato["area"] >= AREA_GRANDE or candidato["circular"] <= CIRC_MAX
+    return (forma
+            and AREA_MIN < candidato["area"] <= AREA_MAX
+            and candidato.get("solidity", 1.0) >= SOL_MIN)
+
+
 def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
-    """Executa as etapas comuns até candidatos com área mínima."""
+    """Executa as etapas comuns até os contornos candidatos, já classificados."""
     img_rgb = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2RGB)
+
+    # Etapa 1 — Gaussian Blur: reduz ruído de textura antes da segmentação.
     blurred = cv2.GaussianBlur(img_bgr, BLUR_KERNEL, 0)
+
+    # Etapa 2 — Segmentação HSV: isola o verde característico das copas.
     hsv = cv2.cvtColor(blurred, cv2.COLOR_BGR2HSV)
     mask_bruta = cv2.inRange(hsv, HSV_LOWER, HSV_UPPER)
+
+    # Etapa 3 — Morfologia CLOSE: conecta fragmentos de uma mesma copa.
     k_close = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (CLOSE_SIZE, CLOSE_SIZE))
-    k_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (OPEN_SIZE, OPEN_SIZE))
     mask_fecha = cv2.morphologyEx(mask_bruta, cv2.MORPH_CLOSE, k_close)
+
+    # Etapa 4 — Morfologia OPEN: remove respingos de ruído.
+    k_open = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (OPEN_SIZE, OPEN_SIZE))
     mask_limpa = cv2.morphologyEx(mask_fecha, cv2.MORPH_OPEN, k_open)
 
+    # Etapa 5a — Contornos: cada região conectada vira um candidato com features.
     todos, _ = cv2.findContours(mask_limpa, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     candidatos = []
     for c in todos:
         area = cv2.contourArea(c)
-        if area <= AREA_MIN:
-            continue
         hull = cv2.convexHull(c)
         peri = cv2.arcLength(c, True)
         harea = cv2.contourArea(hull)
@@ -70,7 +94,7 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
         cv2.drawContours(canvas, [hull], -1, 255, -1)
         dentro = cv2.countNonZero(canvas)
         fill = cv2.countNonZero(cv2.bitwise_and(mask_bruta, canvas)) / dentro if dentro else 0
-        candidatos.append({
+        cand = {
             "contorno": c,
             "area": round(float(area), 1),
             "circular": round(4 * np.pi * area / (peri * peri), 4) if peri else 0.0,
@@ -78,7 +102,10 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
             "solidity": round(float(area / harea), 4) if harea else 0.0,
             "bbox": [int(x), int(y), int(w), int(h)],
             "hull": hull,
-        })
+        }
+        # Etapa 5b — Filtro forma/tamanho: classifica o candidato (embaúba vs lixo).
+        cand["aceito"] = filtro_forma_tamanho(cand)
+        candidatos.append(cand)
     return {
         "img_rgb": img_rgb,
         "suavizado": cv2.cvtColor(blurred, cv2.COLOR_BGR2RGB),
@@ -89,44 +116,6 @@ def _pipeline_base(img_bgr: np.ndarray) -> dict[str, Any]:
         "candidatos": candidatos,
         "coverage_pct": float(np.count_nonzero(mask_limpa)) / mask_limpa.size * 100,
     }
-
-
-def candidato_eh_embauba(candidato: dict[str, Any]) -> bool:
-    """Decide se um candidato extraído pelo pipeline base é embaúba.
-
-    Aceita quando o candidato tem a forma de copa (grande **ou** pouco circular)
-    e está dentro da faixa de tamanho/solidez plausível: abaixo de `AREA_MAX`
-    (descarta blobs fundidos gigantes) e com solidez ≥ `SOL_MIN` (descarta copas
-    ralas). O ``get('solidity', 1.0)`` mantém compatível qualquer dict antigo sem
-    a feature, tratando-o como sólido.
-    """
-    forma = candidato["area"] >= AREA_GRANDE or candidato["circular"] <= CIRC_MAX
-    return (forma
-            and candidato["area"] <= AREA_MAX
-            and candidato.get("solidity", 1.0) >= SOL_MIN)
-
-
-def detectar_para_validacao(img_bgr: np.ndarray) -> list[dict[str, Any]]:
-    """Detecções já rotuladas (embauba/lixo) para a UI de anotação manual.
-
-    Usa a mesma extração e classificação do pipeline canônico (`detectar`), mas
-    preserva os candidatos rejeitados como 'lixo' para que possam ser revistos e
-    corrigidos na UI. Cada entrada traz `id`, `label` e as features de validação
-    (`bbox`, `area`, `circular`, `fill`, `solidity`). É a única fonte das
-    detecções iniciais da validação — `anotar.py` não reimplementa essa lógica.
-    """
-    return [
-        {
-            "id":       i,
-            "label":    "embauba" if candidato_eh_embauba(c) else "lixo",
-            "bbox":     c["bbox"],
-            "area":     c["area"],
-            "circular": c["circular"],
-            "fill":     c["fill"],
-            "solidity": c["solidity"],
-        }
-        for i, c in enumerate(_pipeline_base(img_bgr)["candidatos"], 1)
-    ]
 
 
 def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
@@ -143,9 +132,10 @@ def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
     """
     base = _pipeline_base(img_bgr)
     candidatos = base["candidatos"]
-    aceitos = [c for c in candidatos if candidato_eh_embauba(c)]
+    aceitos = [c for c in candidatos if c["aceito"]]
     contornos = [c["contorno"] for c in aceitos]
 
+    # Etapa 6 — Convex Hull: contorno da copa aceita, desenhado e rotulado.
     resultado = base["img_rgb"].copy()
     for c in contornos:
         hull = cv2.convexHull(c)
@@ -174,13 +164,12 @@ def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
 def _desenhar_candidatos(
     img_rgb: np.ndarray,
     candidatos: list[dict[str, Any]],
-    somente_aceitos: bool = False,
 ) -> np.ndarray:
+    """Desenha todos os candidatos coloridos pelo filtro de forma/tamanho:
+    aceitos (embaúba) em azul, rejeitados (lixo) em amarelo."""
     vis = img_rgb.copy()
     for c in candidatos:
-        if somente_aceitos and not candidato_eh_embauba(c):
-            continue
-        cor = (255, 190, 0) if somente_aceitos else (255, 255, 0)
+        cor = (0, 190, 255) if c["aceito"] else (255, 255, 0)
         cv2.drawContours(vis, [c["hull"]], -1, cor, 4)
     return vis
 
@@ -205,32 +194,6 @@ def _preparar_painel(img: np.ndarray, titulo: str, cmap: str | None) -> np.ndarr
     return painel
 
 
-def detectar_embaubas(img_bgr: np.ndarray) -> list[dict[str, Any]]:
-    """Detecta embaúbas numa imagem e devolve os bounds, serializáveis em JSON.
-
-    É a saída canônica do pipeline: uma entrada por copa detectada (já depois do
-    filtro `candidato_eh_embauba`). Consumida tanto pela avaliação (comparar com
-    o esperado) quanto pela execução em produção.
-
-    Args:
-        img_bgr: Imagem carregada pelo OpenCV no formato BGR.
-
-    Returns:
-        Lista de detecções, cada uma com `bbox` ``[x, y, w, h]``, `area` (px²) e
-        `poligono` (vértices ``[x, y]`` do convex hull).
-    """
-    saida = []
-    for c in detectar(img_bgr)["contornos"]:
-        hull = cv2.convexHull(c)
-        x, y, w, h = cv2.boundingRect(hull)
-        saida.append({
-            "bbox": [int(x), int(y), int(w), int(h)],
-            "area": round(float(cv2.contourArea(c)), 1),
-            "poligono": hull.reshape(-1, 2).tolist(),
-        })
-    return saida
-
-
 def detectar_cronometrado(img_bgr: np.ndarray) -> tuple[dict[str, Any], float, float]:
     """Roda `detectar()` medindo tempo (s) e memória de pico (MB).
 
@@ -253,8 +216,8 @@ def analisar(img_bgr: np.ndarray) -> dict[str, Any]:
     """Detecta embaúbas medindo tempo e memória de pico do processamento.
 
     Saída autocontida por imagem: os bounds de cada copa mais as métricas de
-    diagnóstico. Reaproveitada pela execução em lote (`execucao.processar_tile`)
-    e pela detecção avulsa (`main.py <imagem_ou_pasta>`).
+    diagnóstico. Usada pelo `anotar.py` para montar o estado inicial da validação
+    manual.
 
     Args:
         img_bgr: Imagem carregada pelo OpenCV no formato BGR.
@@ -283,27 +246,64 @@ def analisar(img_bgr: np.ndarray) -> dict[str, Any]:
     }
 
 
-def salvar_passo_a_passo(r: dict[str, Any], nome_tile: str, passo_a_passo_dir: str) -> None:
-    """Salva um PNG com as etapas do pipeline para um tile.
+def _paineis_passo_a_passo(r: dict[str, Any]) -> list[tuple[np.ndarray, str, str | None]]:
+    """Lista ``(imagem, titulo, cmap)`` das etapas do pipeline, na ordem do grid.
+
+    Fonte única das etapas: consumida tanto pelo grid combinado quanto pelas
+    imagens individuais salvas por tile em `salvar_figuras_etapas`.
+    """
+    return [
+        (r["img_rgb"],        "1. Original", None),
+        (r["suavizado"],      "2. Gaussian Blur 9x9", None),
+        (r["hsv"][:, :, 0],   "3. Canal H", "hsv"),
+        (r["hsv"][:, :, 1],   "4. Canal S", "gray"),
+        (r["hsv"][:, :, 2],   "5. Canal V", "gray"),
+        (r["mask_bruta"],     "6. Mascara HSV bruta", "gray"),
+        (r["mask_fecha"],     "7. CLOSE 25x25", "gray"),
+        (r["mask_limpa"],     "8. OPEN 9x9", "gray"),
+        (_desenhar_candidatos(r["img_rgb"], r["candidatos"]), "9. Filtro forma/tamanho", None),
+        (r["resultado"],      f"10. Convex hull final ({r['count']})", None),
+    ]
+
+
+def _slug_painel(titulo: str) -> str:
+    """Nome de arquivo estável a partir do título do painel.
+
+    ``"9. Convex hull final (12)"`` → ``"9_convex_hull_final"``; o parêntese com
+    a contagem (que varia por tile) é removido para o nome não mudar entre tiles.
+    """
+    numero, resto = titulo.split(". ", 1)
+    resto = re.sub(r"\s*\(.*\)", "", resto)
+    slug = re.sub(r"[^a-z0-9]+", "_", resto.lower()).strip("_")
+    return f"{numero}_{slug}"
+
+
+def salvar_figuras_etapas(r: dict[str, Any], nome_tile: str, saida_dir: str) -> None:
+    """Salva as etapas do pipeline de um tile numa subpasta própria.
+
+    Cria ``saida_dir/<base>/`` com cada etapa como PNG separado
+    (``1_original.png`` … ``10_convex_hull_final.png``, prática para escolher uma
+    imagem específica no relatório) mais o ``grid.png`` com os 10 painéis juntos.
+    O JSON de detecções do tile é gravado na mesma pasta por quem chama.
 
     Args:
         r: Dicionário retornado por `detectar`.
         nome_tile: Nome do arquivo do tile (ex.: ``tile_0681.jpg``); a extensão
-            é trocada por ``.png`` na saída.
-        passo_a_passo_dir: Diretório onde a figura é gravada.
+            define o nome da subpasta (``tile_0681``).
+        saida_dir: Diretório onde a subpasta do tile é criada.
     """
-    paineis = [
-        (r["img_rgb"],        "1. Original", None),
-        (r["suavizado"],      "2. Gaussian Blur 9x9", None),
-        (r["hsv"][:, :, 0],   "3. Canal H", "hsv"),
-        (r["mask_bruta"],     "4. Mascara HSV bruta", "gray"),
-        (r["mask_fecha"],     "5. CLOSE 25x25", "gray"),
-        (r["mask_limpa"],     "6. OPEN 9x9", "gray"),
-        (_desenhar_candidatos(r["img_rgb"], r["candidatos"]), "7. Contornos area > 10.000", None),
-        (_desenhar_candidatos(r["img_rgb"], r["candidatos"], True), "8. Filtro eh_embauba", None),
-        (r["resultado"],      f"9. Convex hull final ({r['count']})", None),
-    ]
+    paineis = _paineis_passo_a_passo(r)
     imagens = [_preparar_painel(img, titulo, cmap) for img, titulo, cmap in paineis]
-    linhas = [np.hstack(imagens[i:i + 3]) for i in range(0, len(imagens), 3)]
+
+    base = os.path.splitext(nome_tile)[0]
+    etapas_dir = os.path.join(saida_dir, base)
+    os.makedirs(etapas_dir, exist_ok=True)
+    for (_, titulo, _), painel in zip(paineis, imagens):
+        cv2.imwrite(os.path.join(etapas_dir, _slug_painel(titulo) + ".png"), painel)
+
+    # Grid: completa a última linha com painéis brancos para fechar em blocos de 3.
+    branco = np.full_like(imagens[0], 255)
+    celulas = imagens + [branco] * (-len(imagens) % 3)
+    linhas = [np.hstack(celulas[i:i + 3]) for i in range(0, len(celulas), 3)]
     grid = np.vstack(linhas)
-    cv2.imwrite(os.path.join(passo_a_passo_dir, nome_tile.replace(".jpg", ".png")), grid)
+    cv2.imwrite(os.path.join(etapas_dir, "grid.png"), grid)

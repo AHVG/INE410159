@@ -12,7 +12,7 @@ representam embaúbas visíveis no tile mas não detectadas pelo pipeline base.
 
 Estado atual:
 
-- 35 JSONs revisados.
+- 35 imagens validadas.
 - 146 detecções avaliadas.
 - 126 verdadeiros positivos, 20 falsos positivos e 50 faltantes.
 - Precisão 86,3%, recall 71,6% e F1 78,3%.
@@ -39,61 +39,58 @@ data/validacao/
 ```json
 {
   "tile": "tile_0750.jpg",
-  "revisado": false,
-  "deteccoes": [
-    {
-      "id": 222,
-      "label": "embauba",
-      "bbox": [860, 1177, 314, 350],
-      "area": 69508.5,
-      "circular": 0.3769,
-      "fill": 0.4144
-    }
+  "embaubas": [
+    { "bbox": [860, 1177, 314, 350], "area": 69508.5, "poligono": [[870, 1180]] }
   ],
+  "n_candidatos": 21,
+  "n_deteccoes": 1,
+  "coverage_pct": 3.4,
+  "tempo_s": 0.15,
+  "memoria_mb": 42.0,
+  "falsos_positivos": [],
   "faltantes": [
-    {
-      "bbox": [120, 340, 180, 210]
-    }
+    { "bbox": [120, 340, 180, 210] }
   ]
 }
 ```
 
-- `bbox`: `[x, y, w, h]` em pixels do tile.
-- `area`, `circular` e `fill`: features usadas para comparar regras.
+- `embaubas`: saída do detector — `bbox` `[x, y, w, h]` em px, `area` (px²) e `poligono` (convex hull).
+- `falsos_positivos`: índices de `embaubas` marcados como erro na validação.
 - `faltantes`: caixas de embaúbas presentes no tile e não detectadas.
-- `revisado`: `true` quando o tile foi revisado manualmente.
+- `n_candidatos`, `coverage_pct`, `tempo_s`, `memoria_mb`: métricas de diagnóstico do `analisar`.
+- **Não há flag de revisão**: a existência do JSON já marca a entrada como validada.
 
-## Revisão
+De `embaubas`/`falsos_positivos`/`faltantes` recupera-se TP/FP/FN:
+`TP = len(embaubas) - len(falsos_positivos)`, `FP = len(falsos_positivos)`, `FN = len(faltantes)`.
+
+## Validação
 
 ```bash
-python3 src/anotar.py tile_0905
-python3 src/anotar.py data/validacao/tile_0905/tile_0905.json
-python3 src/anotar.py caminho/nova_imagem.jpg
-python3 src/anotar.py tile_0328 --criar
-python3 src/anotar.py data/validacao --pendentes
-python3 src/anotar.py data/validacao --resumo
-python3 src/anotar.py data/validacao --refazer-todos
+python3 src/anotar.py tile_0905                 # valida uma entrada
+python3 src/anotar.py tile_0905 tile_0120       # várias de uma vez
+python3 src/anotar.py "tile_01*"                # glob
+python3 src/anotar.py data/tiles --amostra 20   # amostra aleatória de 20
+python3 src/anotar.py data/validacao --resumo   # métricas do conjunto validado
+python3 src/anotar.py tile_0905 --refazer       # reanota do zero (descarta)
+python3 src/anotar.py data/validacao --incluir-validadas   # reabre as já feitas
 ```
 
-Quando o alvo é uma imagem que ainda não tem JSON, o `anotar.py` cria
-`data/validacao/<nome_da_imagem>/`, copia a imagem para essa pasta, gera
-automaticamente o JSON inicial com `core.deteccao.extrair_candidatos()` e salva o
-overlay `_vis.png`. Os rótulos iniciais seguem a regra atual do detector
-(`embauba` para candidatos que passam no filtro final, `lixo` para os demais),
-mas devem ser revisados manualmente. Use `--refazer` para recriar esse JSON
-inicial.
+A seleção pode ser tiles, caminhos de imagem, globs ou uma pasta. Para cada
+entrada **ainda não validada**, o `anotar.py` roda o detector
+(`core.deteccao.analisar()`) em memória e abre a janela com as detecções
+desenhadas. Ao **salvar**, cria `data/validacao/<nome>/` com a imagem, o JSON e o
+overlay `_vis.png` — é esse JSON que marca a entrada como validada.
 
 Controles:
 
-- clique numa caixa: alterna `embauba` / `lixo`;
-- arrastar em área vazia: desenha uma caixa em `faltantes`;
+- clique numa detecção: alterna falso positivo (verde ↔ vermelho);
+- arrastar em área vazia: desenha uma embaúba faltante (azul);
 - clique direito numa caixa azul: remove uma faltante;
 - `u`: desfaz a última faltante;
-- `s`: salva, marca `revisado: true` e avança;
+- `s`: salva e avança;
 - `n`: pula o tile atual sem salvar;
 - `q` ou `ESC`: encerra a sessão sem salvar o tile atual.
 
-Para o relatório, revise todos os tiles com `--pendentes`. Quando todos estiverem
-com `revisado: true`, os labels e as caixas em `faltantes` formam uma referência
-consistente para comparações futuras. O resumo calcula precisão, recall e F1
-apenas sobre tiles já revisados.
+Entradas já validadas são puladas por padrão (`--refazer`/`--incluir-validadas`
+para reabrir). O `--resumo` calcula precisão, recall e F1 sobre todo o conjunto
+validado.

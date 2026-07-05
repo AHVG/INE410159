@@ -27,7 +27,7 @@ Fonte LaTeX: [`relatorio.tex`](relatorio.tex). Compilar pela raiz com
 
 PARTE I — Solução com Visão Computacional Clássica
 4. Dataset (recorte para a abordagem clássica)
-5. Pipeline de Detecção Clássico (9 etapas)
+5. Pipeline de Detecção Clássico (10 painéis)
 6. Resultados da Abordagem Clássica
 7. Interpretação e Limitações da Abordagem Clássica
 
@@ -69,24 +69,45 @@ PARTE III — Síntese
   `falsos_positivos`, `faltantes`).
 
 ### 5. Pipeline de Detecção Clássico
-Subseção de **motivação geral** (por que dividir em etapas clássicas: cor →
-morfologia → contornos → filtros geométricos) e, depois, **cada etapa** em subseção
-própria com imagem, motivação, o que faz e parâmetros. Preferir imagens do passo a
-passo em `data/output/passo_a_passo/`.
+Subseção de **motivação geral** (cor → morfologia → contornos → filtro geométrico)
+e, depois, **cada etapa em subseção própria** com **imagem obrigatória**,
+motivação, o que faz e parâmetros.
 
-| Etapa | Operação |
-|-------|----------|
-| 1 | Suavização (Gaussian Blur) |
-| 2 | Conversão de espaço de cor (BGR → HSV) |
-| 3 | Limiarização por cor (faixa HSV das copas) |
-| 4 | Fechamento morfológico (conecta fragmentos) |
-| 5 | Abertura morfológica (remove ruído) |
-| 6 | Detecção de contornos |
-| 7 | Filtragem por área mínima |
-| 8 | Filtro final de embaúba (área/circularidade) |
-| 9 | Convex Hull (aproximação da copa) |
+> **Figuras são obrigatórias para ilustrar.** Nenhuma etapa entra no relatório sem
+> o painel correspondente, e a validação sem a figura de exemplos. Todas saem do
+> `main.py` — **se não existirem em `data/output/`, gere antes de escrever**:
+>
+> | Objetivo | Comando | Saída |
+> |----------|---------|-------|
+> | Pipeline completo (histogramas, `relatorio.md`, `tiles/<tile>/`) | `python3 src/main.py` | `data/output/` |
+> | Etapas de um tile (grid + 10 painéis) | `python3 src/main.py --etapas tile_0681` | `data/output/tiles/tile_0681/` |
+> | Exemplos TP/FP/FN (melhores do conjunto) | `python3 src/main.py --exemplos` | `data/output/exemplos_validacao_tp_fp_fn.png` |
+> | Exemplos TP/FP/FN de um tile | `python3 src/main.py --exemplos tile_0681` | `data/output/exemplos_validacao_tile_0681.png` |
+>
+> `--saida <pasta>` desvia a saída (acumula figuras num diretório próprio do relatório).
+
+Uma etapa = um painel de `data/output/tiles/<tile>/` (referência: `tile_0681`):
+
+| # | Etapa | Painel |
+|---|-------|--------|
+| 1 | Original | `1_original.png` |
+| 2 | Suavização (Gaussian Blur 9×9) | `2_gaussian_blur_9x9.png` |
+| 3 | Canal H — matiz | `3_canal_h.png` |
+| 4 | Canal S — saturação | `4_canal_s.png` |
+| 5 | Canal V — valor | `5_canal_v.png` |
+| 6 | Limiarização HSV (máscara bruta) | `6_mascara_hsv_bruta.png` |
+| 7 | Fechamento morfológico (CLOSE 25×25) | `7_close_25x25.png` |
+| 8 | Abertura morfológica (OPEN 9×9) | `8_open_9x9.png` |
+| 9 | Filtro forma/tamanho (aceitos × rejeitados) | `9_filtro_forma_tamanho.png` |
+| 10 | Convex Hull final | `10_convex_hull_final.png` |
+
+Visão geral num quadro só: `data/output/tiles/<tile>/grid.png`.
 
 ### 6. Resultados da Abordagem Clássica
+**As figuras desta seção são obrigatórias** (histogramas, top-10, cobertura,
+tempo/memória) e saem de `python3 src/main.py` em `data/output/` — **gere se
+estiverem ausentes** antes de escrever.
+
 Ordem das subseções:
 1. Estatísticas gerais (tiles processados/ignorados, % com detecção, total de
    detecções, área total, tempo total/médio, detecções por tile, área por região,
@@ -95,7 +116,9 @@ Ordem das subseções:
 3. Distribuição das áreas de detecção (histograma + interpretação).
 4. Cobertura HSV por tile (figura; explicar que mede pixels na faixa, não copas).
 5. Top 10 tiles com mais detecções (figura e/ou tabela).
-6. Validação manual (tiles revisados, TP/FP/FN, Precisão/Recall/F1 + interpretação).
+6. Validação manual (tiles validados, TP/FP/FN, Precisão/Recall/F1 + interpretação),
+   **obrigatoriamente com a figura `exemplos_validacao_tp_fp_fn.png`** (gere com
+   `python3 src/main.py --exemplos` se ausente).
 7. Desempenho computacional (figuras de tempo e memória + comentário).
 
 ### 7. Interpretação e Limitações da Abordagem Clássica

@@ -1,6 +1,5 @@
 {
   "tile": "tile_0875.jpg",
-  "revisado": true,
   "embaubas": [
     {
       "bbox": [
@@ -1232,12 +1231,13 @@
       ]
     }
   ],
-  "n_candidatos": 13,
+  "n_candidatos": 141,
   "n_deteccoes": 11,
   "coverage_pct": 21.62497043609619,
-  "tempo_s": 0.07529258728027344,
-  "memoria_mb": 64.19550514221191,
+  "tempo_s": 0.24994111061096191,
+  "memoria_mb": 64.28287696838379,
   "falsos_positivos": [
+    1,
     5
   ],
   "faltantes": []

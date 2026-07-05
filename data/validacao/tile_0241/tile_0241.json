@@ -1,6 +1,5 @@
 {
   "tile": "tile_0241.jpg",
-  "revisado": true,
   "embaubas": [
     {
       "bbox": [
@@ -316,11 +315,11 @@
       ]
     }
   ],
-  "n_candidatos": 3,
+  "n_candidatos": 45,
   "n_deteccoes": 3,
   "coverage_pct": 6.260061264038086,
-  "tempo_s": 0.06088662147521973,
-  "memoria_mb": 64.06122016906738,
+  "tempo_s": 0.12534022331237793,
+  "memoria_mb": 64.0852222442627,
   "falsos_positivos": [],
   "faltantes": []
 }

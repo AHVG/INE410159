@@ -20,12 +20,11 @@ Detecção de copas de **Cecropia pachystachya (Embaúba)** em ortomosaico de VA
 
 ```bash
 ./dev.sh pipeline                            # pipeline completo → data/output/
-./dev.sh anotar tile_0905                    # UI de revisão de validação
+./dev.sh anotar tile_0905                    # UI de validação (corrige a saída)
 ./dev.sh relatorio                           # compila docs/relatorio/relatorio.pdf
 ./dev.sh apresentacao                        # compila docs/apresentacao/apresentacao.pdf
 
-python3 src/main.py <imagem_ou_pasta>        # detecção avulsa → JSON
-python3 src/main.py <imagem_ou_pasta> --vis --passo-a-passo
+python3 src/main.py <imagem_ou_pasta>        # detecção avulsa → pasta por imagem (JSON + figuras)
 ```
 
 Requer: `opencv-python`, `matplotlib`, `numpy`.

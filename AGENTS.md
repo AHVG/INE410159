@@ -27,13 +27,13 @@ usar deep learning: apenas `cv2`, `numpy` e `matplotlib`.
 ├── .gitignore
 ├── src/                    # CÓDIGO
 │   ├── core/               #   Núcleo (lógica/helpers), importado pelos pontos de entrada
-│   │   ├── deteccao.py     #     VC clássica + detectar_embaubas(img) → bounds (saída canônica)
+│   │   ├── deteccao.py     #     VC clássica + analisar(img) → bounds + métricas (saída canônica)
 │   │   ├── execucao.py     #     Processamento paralelo + gerenciador de checkpoint
 │   │   └── estatisticas.py #     Figuras estatísticas + relatório Markdown
 │   ├── ref/                #   Referência — NÃO usar como código do projeto
 │   │   └── embaubaHSVmask.py #   Script base original do professor — NÃO MODIFICAR/IMPORTAR
 │   ├── main.py             #   Entrada principal: output completo ou JSON por path
-│   └── anotar.py           #   UI OpenCV para revisar labels e marcar faltantes
+│   └── anotar.py           #   UI OpenCV de validação (falsos positivos + faltantes)
 ├── docs/                   # DOCUMENTAÇÃO
 │   ├── relatorio/          #   Relatório escrito (relatorio.tex, relatorio.pdf)
 │   └── apresentacao/       #   Slides (apresentacao.tex, apresentacao.pdf)
@@ -45,8 +45,8 @@ usar deep learning: apenas `cv2`, `numpy` e `matplotlib`.
 
 Os pontos de entrada em `src/` importam de `core.*`; os caminhos de dados são
 resolvidos a partir de `__file__`, então rodam de qualquer diretório.
-O conteúdo de `data/output/` (passo a passo por tile, histogramas, `relatorio.md`)
-é gerado pelo `src/main.py`.
+O conteúdo de `data/output/` (uma pasta por tile em `tiles/` com JSON + figuras
+do pipeline, histogramas, `relatorio.md`) é gerado pelo `src/main.py`.
 
 ## Estrutura do Relatório
 
@@ -67,9 +67,8 @@ O arquivo [`docs/relatorio/index.md`](docs/relatorio/index.md) define a estrutur
 | 2 | Segmentação HSV | H:[44,58] S:[144,231] V:[104,203] |
 | 3 | Morfologia CLOSE | elipse 25×25 (fecha buracos) |
 | 4 | Morfologia OPEN | elipse 9×9 (remove ruído) |
-| 5 | Filtro de contornos | área > 10.000 px² |
-| 6 | Filtro `eh_embauba` | área ≥ 33.798 ou circularidade ≤ 0.1551 |
-| 7 | Convex Hull | desenha o contorno da copa |
+| 5 | Filtro forma/tamanho | 10.000 < área ≤ 600.000, (área ≥ 33.798 ou circ ≤ 0.1551), solidez ≥ 0.48 |
+| 6 | Convex Hull | desenha o contorno da copa |
 
 ## Como Executar
 
@@ -77,15 +76,15 @@ As entradas públicas são `src/main.py` e `src/anotar.py`:
 
 ```bash
 ./dev.sh pipeline                            # pipeline completo → data/output/
-./dev.sh anotar tile_0905                    # revisa labels e faltantes da validação
-./dev.sh anotar data/validacao --pendentes
+./dev.sh anotar tile_0905                    # valida uma entrada (corrige a saída)
+./dev.sh anotar data/tiles --amostra 20      # valida 20 tiles sorteados
+./dev.sh anotar data/validacao --resumo      # métricas do conjunto validado
 ./dev.sh relatorio                           # compila docs/relatorio/relatorio.pdf
 ./dev.sh apresentacao                        # compila docs/apresentacao/apresentacao.pdf
 
 # Direto:
 MPLBACKEND=Agg python3 src/main.py           # pipeline completo nos tiles → data/output/
-python3 src/main.py <imagem_ou_pasta>         # detecção avulsa → JSON por imagem
-python3 src/main.py <imagem_ou_pasta> --vis --passo-a-passo
+python3 src/main.py <imagem_ou_pasta>         # detecção avulsa → pasta por imagem (JSON + figuras)
 ```
 
 Requer: `opencv-python`, `matplotlib`, `numpy`.
@@ -102,6 +101,6 @@ documentados em [`data/validacao/index.md`](data/validacao/index.md).
 
 ## Saídas
 
-- `data/output/passo_a_passo/tile_XXXX.png` — visualização das 8 etapas por tile
+- `data/output/tiles/tile_XXXX/` — por tile: JSON de detecções, `grid.png` e as 10 etapas do pipeline
 - Gráficos estatísticos em `data/output/`
 - `data/output/relatorio.md` — relatório completo em Markdown

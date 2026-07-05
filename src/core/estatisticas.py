@@ -6,6 +6,7 @@ import json
 import tempfile
 from typing import Any, Sequence
 
+import cv2
 import numpy as np
 os.environ.setdefault("MPLCONFIGDIR", os.path.join(tempfile.gettempdir(), "matplotlib"))
 import matplotlib
@@ -82,11 +83,11 @@ def _pct(num: float, den: float) -> float:
 
 
 def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
-    """Métricas do detector a partir dos JSONs revisados de validação.
+    """Métricas do detector a partir dos JSONs de validação.
 
-    Cada JSON traz `embaubas` (saída do detector), `falsos_positivos` (índices das
-    detecções que o revisor marcou como erro) e `faltantes` (copas que o detector
-    não pegou). As métricas somam apenas os tiles revisados:
+    Cada JSON validado traz `embaubas` (saída do detector), `falsos_positivos`
+    (índices das detecções marcadas como erro) e `faltantes` (copas que o detector
+    não pegou). A existência do JSON já indica que a entrada foi validada:
         TP = detecções confirmadas;  FP = falsos positivos;  FN = faltantes.
     """
     jsons = sorted(
@@ -96,14 +97,14 @@ def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
         if nome.endswith(".json")
     ) if os.path.exists(validacao_dir) else []
 
-    revisados = tp = fp = fn = 0
+    validados = tp = fp = fn = 0
     for path in jsons:
         with open(path, encoding="utf-8") as f:
             meta = json.load(f)
-        if not meta.get("revisado", False):
+        if "embaubas" not in meta:  # JSON incompleto/esquema antigo
             continue
-        revisados += 1
-        n_det = len(meta.get("embaubas", []))
+        validados += 1
+        n_det = len(meta["embaubas"])
         n_fp = len(meta.get("falsos_positivos", []))
         fp += n_fp
         tp += n_det - n_fp
@@ -111,7 +112,7 @@ def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
 
     return {
         "jsons": len(jsons),
-        "revisados": revisados,
+        "validados": validados,
         "tp": tp,
         "fp": fp,
         "fn": fn,
@@ -119,6 +120,131 @@ def calcular_validacao(validacao_dir: str) -> dict[str, Any]:
         "recall": _pct(tp, tp + fn),
         "f1": _pct(2 * tp, 2 * tp + fp + fn),
     }
+
+
+# ── Figura qualitativa de exemplos TP/FP/FN ───────────────────────────────────
+
+_VERDE = (0, 180, 0); _VERMELHO = (30, 30, 220); _AZUL = (220, 90, 30)
+
+
+def _expandir_bbox(bbox: list[int], largura: int, altura: int, margem: int = 180) -> tuple[int, int, int, int]:
+    x, y, w, h = bbox
+    return (max(0, x - margem), max(0, y - margem),
+            min(largura, x + w + margem), min(altura, y + h + margem))
+
+
+def _crop_anotado(img_bgr: np.ndarray, bbox: list[int], cor: tuple[int, int, int], rotulo: str) -> np.ndarray:
+    """Recorta a região do `bbox` (com margem), desenha a caixa e o rótulo, em RGB."""
+    altura, largura = img_bgr.shape[:2]
+    x0, y0, x1, y1 = _expandir_bbox(bbox, largura, altura)
+    crop = img_bgr[y0:y1, x0:x1].copy()
+    x, y, w, h = bbox
+    cv2.rectangle(crop, (x - x0, y - y0), (x + w - x0, y + h - y0), cor, 5)
+    cv2.putText(crop, rotulo, (max(8, x - x0), max(34, y - y0 - 12)),
+                cv2.FONT_HERSHEY_SIMPLEX, 1.1, cor, 3)
+    return cv2.cvtColor(crop, cv2.COLOR_BGR2RGB)
+
+
+def _frac_preto(img_bgr: np.ndarray, bbox: list[int]) -> float:
+    """Fração quase-preta na região do bbox (penaliza exemplos em borda de tile)."""
+    altura, largura = img_bgr.shape[:2]
+    x0, y0, x1, y1 = _expandir_bbox(bbox, largura, altura)
+    crop = img_bgr[y0:y1, x0:x1]
+    return float(np.mean(np.all(crop < 12, axis=2))) if crop.size else 1.0
+
+
+def _melhores_exemplos(validacao_dir: str, tile: str | None) -> dict[str, tuple[str, list[int]]]:
+    """Escolhe o melhor exemplo de TP/FP/FN (menos preto, área ~90k px²).
+
+    Com `tile`, considera só aquele tile validado; sem, varre todo o conjunto.
+    """
+    pools: dict[str, list[tuple[float, str, list[int]]]] = {"tp": [], "fp": [], "fn": []}
+    nomes = [tile] if tile else sorted(os.listdir(validacao_dir)) if os.path.isdir(validacao_dir) else []
+    for nome in nomes:
+        json_path = os.path.join(validacao_dir, nome, f"{nome}.json")
+        if not os.path.isfile(json_path):
+            continue
+        with open(json_path, encoding="utf-8") as f:
+            meta = json.load(f)
+        img_bgr = cv2.imread(os.path.join(validacao_dir, nome, f"{nome}.jpg"))
+        if img_bgr is None:
+            continue
+        fps = set(meta.get("falsos_positivos", []))
+        for i, det in enumerate(meta.get("embaubas", [])):
+            bbox = det["bbox"]
+            score = _frac_preto(img_bgr, bbox) + 1e-8 * abs(bbox[2] * bbox[3] - 90_000)
+            pools["fp" if i in fps else "tp"].append((score, nome, bbox))
+        for fa in meta.get("faltantes", []):
+            bbox = fa["bbox"]
+            score = _frac_preto(img_bgr, bbox) + 1e-8 * abs(bbox[2] * bbox[3] - 90_000)
+            pools["fn"].append((score, nome, bbox))
+
+    melhores: dict[str, tuple[str, list[int]]] = {}
+    for chave, opcoes in pools.items():
+        fonte = [op for op in opcoes if op[0] < 0.15] or opcoes
+        if fonte:
+            _, nome, bbox = min(fonte, key=lambda item: item[0])
+            melhores[chave] = (nome, bbox)
+    return melhores
+
+
+def gerar_exemplos_validacao(validacao_dir: str, tiles_dir: str, output_dir: str,
+                             tile: str | None = None) -> str:
+    """Gera a figura 2×2 de exemplos TP/FP/FN da validação.
+
+    Sem `tile`, escolhe o melhor exemplo de cada categoria em todo o conjunto
+    validado (figura canônica do relatório). Com `tile`, usa só aquele tile —
+    categorias ausentes viram um painel "sem exemplo".
+
+    Returns:
+        Caminho do PNG salvo em `output_dir`.
+    """
+    from .deteccao import detectar
+
+    exemplos = _melhores_exemplos(validacao_dir, tile)
+    ref = tile or "tile_0681"
+    ref_path = os.path.join(validacao_dir, ref, f"{ref}.jpg")
+    if not os.path.isfile(ref_path):
+        ref_path = os.path.join(tiles_dir, f"{ref}.jpg")
+    img_ref = cv2.imread(ref_path)
+
+    fig, axs = plt.subplots(2, 2, figsize=(13, 11))
+    if img_ref is not None:
+        axs[0, 0].imshow(detectar(img_ref)["resultado"])
+    axs[0, 0].set_title(f"Saida final do detector\n{ref}.jpg", fontsize=12, fontweight="bold")
+    axs[0, 0].axis("off")
+
+    for ax, chave, titulo, cor, rotulo in [
+        (axs[0, 1], "tp", "Deteccao correta (TP)", _VERDE, "TP"),
+        (axs[1, 0], "fp", "Falso positivo (FP)", _VERMELHO, "FP"),
+        (axs[1, 1], "fn", "Falso negativo / faltante (FN)", _AZUL, "FN"),
+    ]:
+        ax.axis("off")
+        ax.set_title(titulo, fontsize=12, fontweight="bold")
+        if chave not in exemplos:
+            ax.text(0.5, 0.5, f"sem exemplo de {rotulo}\nneste tile",
+                    ha="center", va="center", fontsize=13)
+            continue
+        nome, bbox = exemplos[chave]
+        img_bgr = cv2.imread(os.path.join(validacao_dir, nome, f"{nome}.jpg"))
+        ax.imshow(_crop_anotado(img_bgr, bbox, cor, rotulo))
+        ax.set_title(f"{titulo}\n{nome}.jpg", fontsize=12, fontweight="bold")
+
+    handles = [
+        plt.Line2D([0], [0], color=np.array((255, 200, 0)) / 255, lw=4, label="Saida: hull final do detector"),
+        plt.Line2D([0], [0], color=np.array(_VERDE[::-1]) / 255, lw=4, label="TP: deteccao correta"),
+        plt.Line2D([0], [0], color=np.array(_VERMELHO[::-1]) / 255, lw=4, label="FP: deteccao incorreta"),
+        plt.Line2D([0], [0], color=np.array(_AZUL[::-1]) / 255, lw=4, label="FN: copa faltante"),
+    ]
+    fig.legend(handles=handles, loc="lower center", ncol=2, frameon=False)
+    fig.tight_layout(rect=(0, 0.08, 1, 1))
+
+    os.makedirs(output_dir, exist_ok=True)
+    nome_saida = "exemplos_validacao_tp_fp_fn.png" if tile is None else f"exemplos_validacao_{tile}.png"
+    out = os.path.join(output_dir, nome_saida)
+    fig.savefig(out, dpi=170, bbox_inches="tight")
+    plt.close(fig)
+    return out
 
 
 # ── Figuras estatísticas ──────────────────────────────────────────────────────
@@ -251,11 +377,10 @@ fora da área mapeada, são descartadas automaticamente antes da detecção para
 distorcer as estatísticas.
 
 O conjunto de validação fica em `data/validacao/`, com uma subpasta por imagem
-revisada (`<nome>.jpg`, `<nome>.json`, `<nome>_vis.png`). Atualmente há
-{validacao['jsons']} JSONs de validação, {validacao['revisados']} revisados
-manualmente. Cada JSON armazena a saída do detector (`embaubas`), os índices
-marcados como falso positivo na revisão (`falsos_positivos`) e caixas `faltantes`
-para copas que o detector não pegou.
+validada (`<nome>.jpg`, `<nome>.json`, `<nome>_vis.png`). Atualmente há
+{validacao['validados']} imagens validadas. Cada JSON armazena a saída do detector
+(`embaubas`), os índices marcados como falso positivo na validação
+(`falsos_positivos`) e caixas `faltantes` para copas que o detector não pegou.
 
 ## 3. Pipeline
 
@@ -267,9 +392,8 @@ para copas que o detector não pegou.
 | 4. Fechamento morfológico | conecta fragmentos próximos | fecha buracos e quebras dentro da copa | elipse {CLOSE_SIZE}×{CLOSE_SIZE} |
 | 5. Abertura morfológica | remove componentes pequenos | reduz respingos de ruído após o fechamento | elipse {OPEN_SIZE}×{OPEN_SIZE} |
 | 6. Detecção de contornos | extrai regiões conectadas | transforma a máscara em candidatos | `RETR_EXTERNAL`, `CHAIN_APPROX_SIMPLE` |
-| 7. Filtro de área | descarta regiões pequenas | remove manchas muito menores que uma copa | área > {AREA_MIN:,} px² |
-| 8. Filtro final | classifica candidatos como embaúba | reduz falsos positivos por forma e tamanho | (área ≥ {AREA_GRANDE:,} ou circ ≤ {CIRC_MAX}) e área ≤ {AREA_MAX:,} e solidez ≥ {SOL_MIN} |
-| 9. Convex Hull | aproxima a copa para desenho/exportação | contorno mais estável para visualização e bounds | `cv2.convexHull` |
+| 7. Filtro forma/tamanho | classifica candidatos como embaúba | reúne todos os critérios geométricos que separam copa de lixo | {AREA_MIN:,} < área ≤ {AREA_MAX:,}, (área ≥ {AREA_GRANDE:,} ou circ ≤ {CIRC_MAX}) e solidez ≥ {SOL_MIN} |
+| 8. Convex Hull | aproxima a copa para desenho/exportação | contorno mais estável para visualização e bounds | `cv2.convexHull` |
 
 ## 4. Resultados
 
@@ -299,14 +423,14 @@ para copas que o detector não pegou.
 
 ### Validação manual
 
-A validação compara a saída do detector com a revisão manual de
-{validacao['revisados']}/{validacao['jsons']} tiles. Na revisão, cada detecção é
-confirmada como embaúba ou marcada como falso positivo, e as copas que o detector
-não pegou são anotadas como faltantes.
+A validação compara a saída do detector com a anotação manual de
+{validacao['validados']} tiles. Em cada um, toda detecção é confirmada como
+embaúba ou marcada como falso positivo, e as copas que o detector não pegou são
+anotadas como faltantes.
 
 | Métrica | Valor |
 |---------|-------|
-| Tiles revisados | {validacao['revisados']}/{validacao['jsons']} |
+| Tiles validados | {validacao['validados']} |
 | Verdadeiros positivos (TP) | {validacao['tp']} |
 | Falsos positivos (FP) | {validacao['fp']} |
 | Falsos negativos / faltantes (FN) | {validacao['fn']} |
@@ -323,7 +447,9 @@ HSV não chegou a produzir.
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `passo_a_passo/tile_XXXX.png` | 9 painéis do pipeline por tile selecionado |
+| `tiles/tile_XXXX/tile_XXXX.json` | detecções (bbox, área, polígono) e métricas do tile |
+| `tiles/tile_XXXX/grid.png` | 10 painéis do pipeline juntos |
+| `tiles/tile_XXXX/` | cada uma das 10 etapas como PNG separado |
 | `hist_deteccoes_por_tile.png` | Distribuição de detecções |
 | `hist_areas_deteccao.png` | Distribuição de áreas |
 | `top10_tiles.png` | Top 10 por detecções |
@@ -334,7 +460,7 @@ HSV não chegou a produzir.
 ## 5. Conclusão
 
 O pipeline processou {n} tiles válidos e encontrou {total_det:,} regiões
-classificadas como embaúba. Na validação manual de {validacao['revisados']} tiles,
+classificadas como embaúba. Na validação manual de {validacao['validados']} tiles,
 o detector atingiu {validacao['precisao']:.1f}% de precisão e
 {validacao['recall']:.1f}% de recall, mostrando que o filtro de forma e tamanho
 remove a maior parte dos falsos positivos (palmeiras). O método é direto e

@@ -5,16 +5,16 @@
 | Arquivo | Descrição |
 |---------|-----------|
 | `main.py` | Entrada principal. Sem argumentos: processa `data/tiles/` e gera artefatos completos em `data/output/`. Com caminho: retorna JSON por imagem e, opcionalmente, visualizações. |
-| `anotar.py` | UI OpenCV para revisão manual. Permite marcar falsos positivos e embaúbas faltantes sobre a saída do algoritmo; persiste as correções em `data/validacao/<tile>/`. |
+| `anotar.py` | UI OpenCV de validação. Abre as entradas ainda não validadas de uma seleção (tiles/globs/pasta, `--amostra N`) e deixa marcar falsos positivos e embaúbas faltantes sobre a saída do algoritmo; persiste em `data/validacao/<tile>/` (existir = validado). |
 
 ### Uso rápido
 
 ```bash
 python3 src/main.py                                        # pipeline completo
-python3 src/main.py <imagem_ou_pasta>                      # detecção avulsa → JSON
-python3 src/main.py <imagem_ou_pasta> --vis --passo-a-passo
-python3 src/anotar.py tile_0905                            # abre janela de revisão
-python3 src/anotar.py data/validacao --pendentes           # lista tiles pendentes
+python3 src/main.py <imagem_ou_pasta>                      # detecção avulsa → pasta por imagem (JSON + figuras)
+python3 src/anotar.py tile_0905                            # valida uma entrada
+python3 src/anotar.py data/tiles --amostra 20              # valida 20 tiles sorteados
+python3 src/anotar.py data/validacao --resumo             # métricas do conjunto validado
 ```
 
 ## Núcleo (`core/`)

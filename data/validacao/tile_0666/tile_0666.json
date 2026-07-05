@@ -1,6 +1,5 @@
 {
   "tile": "tile_0666.jpg",
-  "revisado": true,
   "embaubas": [
     {
       "bbox": [
@@ -1562,27 +1561,27 @@
       ]
     }
   ],
-  "n_candidatos": 16,
+  "n_candidatos": 127,
   "n_deteccoes": 13,
   "coverage_pct": 30.570507049560547,
-  "tempo_s": 0.079437255859375,
-  "memoria_mb": 64.21029853820801,
+  "tempo_s": 0.27091407775878906,
+  "memoria_mb": 64.28544807434082,
   "falsos_positivos": [],
   "faltantes": [
     {
       "bbox": [
-        1699,
-        13,
-        253,
-        196
+        1683,
+        27,
+        283,
+        216
       ]
     },
     {
       "bbox": [
-        -6,
-        22,
-        297,
-        198
+        -18,
+        16,
+        308,
+        216
       ]
     }
   ]

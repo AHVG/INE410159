@@ -1,12 +1,11 @@
 {
   "tile": "tile_0113.jpg",
-  "revisado": true,
   "embaubas": [],
-  "n_candidatos": 0,
+  "n_candidatos": 5,
   "n_deteccoes": 0,
   "coverage_pct": 0.09925365447998047,
-  "tempo_s": 0.05375051498413086,
-  "memoria_mb": 60.00437355041504,
+  "tempo_s": 0.06335282325744629,
+  "memoria_mb": 64.00720405578613,
   "falsos_positivos": [],
   "faltantes": []
 }

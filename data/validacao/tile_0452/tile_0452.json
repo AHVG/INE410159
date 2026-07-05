@@ -1,12 +1,11 @@
 {
   "tile": "tile_0452.jpg",
-  "revisado": true,
   "embaubas": [],
-  "n_candidatos": 8,
+  "n_candidatos": 97,
   "n_deteccoes": 0,
   "coverage_pct": 6.711864471435547,
-  "tempo_s": 0.06399035453796387,
-  "memoria_mb": 64.09752082824707,
+  "tempo_s": 0.19276928901672363,
+  "memoria_mb": 64.1561450958252,
   "falsos_positivos": [],
   "faltantes": []
 }
