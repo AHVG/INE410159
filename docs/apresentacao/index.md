@@ -32,21 +32,22 @@ PARTE I — Visão Computacional Clássica            [slide divisor]
  11. Distribuições espaciais (histogramas)
  12. Cobertura de vegetação e Top 10
  13. Validação manual (TP/FP/FN, P/R/F1)
- 14. Desempenho computacional (tempo e memória)
- 15. Limitações da abordagem clássica
+ 14. Exemplos da validação (TP/FP/FN)
+ 15. Desempenho computacional (tempo e memória)
+ 16. Limitações da abordagem clássica
 
 PARTE II — Redes Neurais (SAM 3 + YOLOv8)         [slide divisor]
- 16. Motivação: SAM 3 e curadoria por exclusão
- 17. Pipeline semi-automatizado em 6 etapas
- 18. Etapa 1 — geração do dataset
- 19. Etapas 2 e 3 — divisão espacial e correção (tabela do dataset)
- 20. Etapa 4 — treinamento do YOLOv8x (otimização bayesiana)
- 21. Etapas 5 e 6 — inferência e segmentação
- 22. Métricas e resultados
+ 17. Motivação: SAM 3 e curadoria por exclusão
+ 18. Pipeline semi-automatizado em 6 etapas
+ 19. Etapa 1 — geração do dataset
+ 20. Etapas 2 e 3 — divisão espacial e correção (tabela do dataset)
+ 21. Etapa 4 — treinamento do YOLOv8x (otimização bayesiana)
+ 22. Etapas 5 e 6 — inferência e segmentação
+ 23. Métricas e resultados
 
 SÍNTESE — Comparação e Conclusões                 [slide divisor]
- 23. Comparação das duas abordagens (tabela)
- 24. Conclusões e trabalhos futuros
+ 24. Comparação das duas abordagens (tabela)
+ 25. Conclusões e trabalhos futuros
 ```
 
 ---

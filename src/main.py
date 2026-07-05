@@ -12,7 +12,7 @@ import sys
 
 import cv2
 
-from core.execucao import processar_todos_tiles
+from core.execucao import processar_todos_tiles, regenerar_passo_a_passo_todos
 from core.estatisticas import gerar_figuras, gerar_relatorio, calcular_validacao
 from core.deteccao import detectar, analisar, salvar_passo_a_passo
 
@@ -42,6 +42,13 @@ def pipeline_completo(passo_a_passo_cada: int = 1) -> None:
     gerar_relatorio(resultados, todas_areas, pixel_size, t_total, tiles_pretos, OUTPUT_DIR)
 
     print(f"\n[CONCLUÍDO] Arquivos em '{OUTPUT_DIR}/'")
+
+
+def regenerar_passo_a_passo() -> None:
+    """Recria todas as figuras de passo a passo dos tiles oficiais."""
+    ok, pretos, erros = regenerar_passo_a_passo_todos(TILES_DIR, PASSO_A_PASSO_DIR)
+    print(f"\n[CONCLUÍDO] {ok} figuras em '{PASSO_A_PASSO_DIR}/' "
+          f"({pretos} tiles pretos ignorados, {erros} erros).")
 
 
 def _saida_padrao(caminho: str) -> str:
@@ -115,9 +122,11 @@ def main() -> None:
     ap.add_argument("--vis", action="store_true",
                     help="com <caminho>, também salva PNG anotado por imagem")
     ap.add_argument("--passo-a-passo", action="store_true",
-                    help="com <caminho>, também salva a figura com as 8 etapas")
+                    help="com <caminho>, também salva a figura com as etapas do pipeline")
     ap.add_argument("--passo-a-passo-cada", type=int, default=1,
                     help="no pipeline completo, salva passo a passo a cada N tiles não pretos")
+    ap.add_argument("--somente-passo-a-passo", action="store_true",
+                    help="regenera o passo a passo de todos os tiles oficiais e sai")
     ap.add_argument("--validacao", action="store_true",
                     help="só imprime as métricas de validação (data/validacao) e sai")
     args = ap.parse_args()
@@ -126,6 +135,10 @@ def main() -> None:
 
     if args.validacao:
         imprimir_validacao()
+        return
+
+    if args.somente_passo_a_passo:
+        regenerar_passo_a_passo()
         return
 
     if args.caminho is None:

@@ -247,11 +247,14 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{../../data/output/passo_a_passo/tile_0634.png}
-    \caption{Visualização das imagens de inspeção do pipeline sobre
-             \texttt{tile\_0634.jpg}. Da esquerda para a direita, de cima para
-             baixo: imagem original, blur gaussiano, canal H, canal S, canal V,
-             máscara bruta, máscara limpa e resultado final.}
+    \includegraphics[width=\textwidth]{../../data/output/pipeline_exemplo_filtro_classico.png}
+    \caption{Visualização completa do pipeline clássico sobre
+             \texttt{tile\_0681.jpg}: imagem original, suavização, canal H,
+             máscara HSV bruta, fechamento, abertura, contornos por área mínima,
+             filtro final \texttt{eh\_embauba} e convex hull de saída. Neste
+             exemplo, o filtro reduz 21 candidatos por área mínima para 2
+             detecções finais, evidenciando sua função de remover regiões de
+             vegetação espectralmente semelhantes.}
     \label{fig:pipeline}
 \end{figure}
 
@@ -259,7 +262,7 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={472bp 486bp 945bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_02.png}
     \caption{Imagem suavizada com filtro gaussiano.}
     \label{fig:etapa-blur}
 \end{figure}
@@ -277,24 +280,8 @@ filtro preserva a estrutura geral das copas, mas atenua detalhes muito pequenos.
 
 \begin{figure}[H]
     \centering
-    \begin{subfigure}[b]{0.31\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, trim={945bp 486bp 472bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
-        \caption{Canal H.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.31\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, trim={1417bp 486bp 0bp 0bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
-        \caption{Canal S.}
-    \end{subfigure}
-    \hfill
-    \begin{subfigure}[b]{0.31\textwidth}
-        \centering
-        \includegraphics[width=\textwidth, trim={0bp 0bp 1417bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
-        \caption{Canal V.}
-    \end{subfigure}
-    \caption{Canais HSV extraídos após a suavização.}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_03.png}
+    \caption{Canal H extraído após a conversão para HSV.}
     \label{fig:etapa-hsv}
 \end{figure}
 
@@ -310,7 +297,7 @@ RGB, pois separa a informação de matiz da luminosidade.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={472bp 0bp 945bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_04.png}
     \caption{Máscara bruta produzida pela faixa HSV.}
     \label{fig:etapa-limiarizacao}
 \end{figure}
@@ -335,7 +322,7 @@ Pixels cujos valores HSV estão dentro desse intervalo recebem valor 255 na
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_05.png}
     \caption{Máscara após operações morfológicas, com regiões internas mais coesas.}
     \label{fig:etapa-close}
 \end{figure}
@@ -354,7 +341,7 @@ fragmentos próximos em regiões coesas que representam copas individuais.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={945bp 0bp 472bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_06.png}
     \caption{Máscara limpa após remoção de pequenos componentes.}
     \label{fig:etapa-open}
 \end{figure}
@@ -372,7 +359,7 @@ regiões maiores já consolidadas pelo fechamento.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_07.png}
     \caption{Regiões conectadas convertidas em candidatos desenhados sobre a imagem.}
     \label{fig:etapa-contornos}
 \end{figure}
@@ -390,7 +377,7 @@ contornos sem afetar a área estimada.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_07.png}
     \caption{Candidatos remanescentes após descarte de regiões pequenas.}
     \label{fig:etapa-area}
 \end{figure}
@@ -407,7 +394,7 @@ etapas morfológicas, mantendo apenas regiões compatíveis com copas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_08.png}
     \caption{Resultado final depois dos filtros de tamanho, circularidade e solidez.}
     \label{fig:etapa-filtro-final}
 \end{figure}
@@ -429,7 +416,7 @@ fragmentadas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth, trim={1417bp 0bp 0bp 486bp}, clip]{../../data/output/passo_a_passo/tile_0634.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_09.png}
     \caption{Contorno final representado pelo fecho convexo da região detectada.}
     \label{fig:etapa-hull}
 \end{figure}
@@ -582,6 +569,15 @@ a embaúba na amostra revisada. O recall de 71,6\% melhorou com a ampliação da
 amostra, mas ainda mostra que o método perde copas reais, principalmente quando a
 segmentação HSV não produz um candidato inicial ou quando a copa aparece com
 iluminação e cor fora da faixa definida.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../../data/output/exemplos_validacao_tp_fp_fn.png}
+    \caption{Saída final do detector em um tile de exemplo e exemplos
+             qualitativos da validação manual: verdadeiro positivo (TP), falso
+             positivo (FP) e falso negativo/faltante (FN).}
+    \label{fig:validacao-exemplos}
+\end{figure}
 
 \subsection{Desempenho Computacional}
 

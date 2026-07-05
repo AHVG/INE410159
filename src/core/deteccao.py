@@ -161,6 +161,7 @@ def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
         "mask_bruta":   base["mask_bruta"],
         "mask_fecha":   base["mask_fecha"],
         "mask_limpa":   base["mask_limpa"],
+        "candidatos":    candidatos,
         "contornos":    contornos,
         "resultado":    resultado,
         "count":        len(contornos),
@@ -168,6 +169,40 @@ def detectar(img_bgr: np.ndarray) -> dict[str, Any]:
         "areas_px":     [c["area"] for c in aceitos],
         "coverage_pct": base["coverage_pct"],
     }
+
+
+def _desenhar_candidatos(
+    img_rgb: np.ndarray,
+    candidatos: list[dict[str, Any]],
+    somente_aceitos: bool = False,
+) -> np.ndarray:
+    vis = img_rgb.copy()
+    for c in candidatos:
+        if somente_aceitos and not candidato_eh_embauba(c):
+            continue
+        cor = (255, 190, 0) if somente_aceitos else (255, 255, 0)
+        cv2.drawContours(vis, [c["hull"]], -1, cor, 4)
+    return vis
+
+
+def _preparar_painel(img: np.ndarray, titulo: str, cmap: str | None) -> np.ndarray:
+    if img.ndim == 2:
+        if cmap == "hsv":
+            vis = cv2.normalize(img, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+            vis = cv2.applyColorMap(vis, cv2.COLORMAP_HSV)
+        else:
+            vis = cv2.cvtColor(img, cv2.COLOR_GRAY2BGR)
+    else:
+        vis = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
+
+    tamanho = 640
+    faixa_titulo = 58
+    vis = cv2.resize(vis, (tamanho, tamanho), interpolation=cv2.INTER_AREA)
+    painel = np.full((tamanho + faixa_titulo, tamanho, 3), 255, dtype=np.uint8)
+    painel[faixa_titulo:, :] = vis
+    cv2.putText(painel, titulo, (18, 38), cv2.FONT_HERSHEY_SIMPLEX,
+                0.78, (25, 25, 25), 2, cv2.LINE_AA)
+    return painel
 
 
 def detectar_embaubas(img_bgr: np.ndarray) -> list[dict[str, Any]]:
@@ -249,7 +284,7 @@ def analisar(img_bgr: np.ndarray) -> dict[str, Any]:
 
 
 def salvar_passo_a_passo(r: dict[str, Any], nome_tile: str, passo_a_passo_dir: str) -> None:
-    """Salva um PNG com as 8 etapas do pipeline para um tile.
+    """Salva um PNG com as etapas do pipeline para um tile.
 
     Args:
         r: Dicionário retornado por `detectar`.
@@ -258,23 +293,17 @@ def salvar_passo_a_passo(r: dict[str, Any], nome_tile: str, passo_a_passo_dir: s
         passo_a_passo_dir: Diretório onde a figura é gravada.
     """
     paineis = [
-        (r["img_rgb"],        "1. Original",                   None),
-        (r["suavizado"],      "2. Gaussian Blur (9×9)",         None),
-        (r["hsv"][:, :, 0],  "3. Canal H (Matiz)",             "hsv"),
-        (r["hsv"][:, :, 1],  "4. Canal S (Saturação)",         "gray"),
-        (r["hsv"][:, :, 2],  "5. Canal V (Valor/Brilho)",      "gray"),
-        (r["mask_bruta"],     "6. Máscara Bruta (inRange)",     "gray"),
-        (r["mask_limpa"],     "7. Máscara Limpa (CLOSE+OPEN)",  "gray"),
-        (r["resultado"],      f"8. Resultado — {r['count']} detecções", None),
+        (r["img_rgb"],        "1. Original", None),
+        (r["suavizado"],      "2. Gaussian Blur 9x9", None),
+        (r["hsv"][:, :, 0],   "3. Canal H", "hsv"),
+        (r["mask_bruta"],     "4. Mascara HSV bruta", "gray"),
+        (r["mask_fecha"],     "5. CLOSE 25x25", "gray"),
+        (r["mask_limpa"],     "6. OPEN 9x9", "gray"),
+        (_desenhar_candidatos(r["img_rgb"], r["candidatos"]), "7. Contornos area > 10.000", None),
+        (_desenhar_candidatos(r["img_rgb"], r["candidatos"], True), "8. Filtro eh_embauba", None),
+        (r["resultado"],      f"9. Convex hull final ({r['count']})", None),
     ]
-    _, axs = plt.subplots(2, 4, figsize=(24, 12))
-    plt.suptitle(f"Pipeline — Cecropia / Embaúba ({nome_tile})",
-                 fontsize=14, fontweight="bold", y=1.01)
-    for ax, (img, titulo, cmap) in zip(axs.flat, paineis):
-        ax.imshow(img, cmap=cmap)
-        ax.set_title(titulo, fontsize=9, fontweight="bold")
-        ax.axis("off")
-    plt.tight_layout()
-    plt.savefig(os.path.join(passo_a_passo_dir, nome_tile.replace(".jpg", ".png")),
-                dpi=80, bbox_inches="tight")
-    plt.close()
+    imagens = [_preparar_painel(img, titulo, cmap) for img, titulo, cmap in paineis]
+    linhas = [np.hstack(imagens[i:i + 3]) for i in range(0, len(imagens), 3)]
+    grid = np.vstack(linhas)
+    cv2.imwrite(os.path.join(passo_a_passo_dir, nome_tile.replace(".jpg", ".png")), grid)

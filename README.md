@@ -140,7 +140,7 @@ python3 src/anotar.py data/validacao --pendentes
 - `src/main.py` sem path → `data/output/`: passo a passo por tile, histogramas e `relatorio.md`.
 - `src/main.py <imagem_ou_pasta>` → `<path>_deteccoes/` com um **JSON de bounds**
   por imagem (`<nome>.json`: `bbox`, `area`, `poligono`). Use `--vis` para também
-  salvar o PNG anotado, `--passo-a-passo` para as 8 etapas e `--saida` para outro destino.
+  salvar o PNG anotado, `--passo-a-passo` para os 9 painéis do pipeline e `--saida` para outro destino.
 - `src/anotar.py <tile>` → UI OpenCV para alternar `embauba`/`lixo`, desenhar
   caixas de `faltantes` e marcar o JSON como `revisado`. Também aceita
   `data/validacao` para revisar vários tiles em fila; use `--pendentes` para

@@ -8,6 +8,8 @@ usage() {
     echo "  relatorio       Compila docs/relatorio/relatorio.tex → PDF"
     echo "  apresentacao    Compila docs/apresentacao/apresentacao.tex → PDF"
     echo "  pipeline        Roda o pipeline completo nos tiles → data/output/"
+    echo "  passo-a-passo   Regenera data/output/passo_a_passo/ para todos os tiles"
+    echo "  figuras         Gera figuras qualitativas do relatório"
     echo "  anotar [tile]   Abre a UI de revisão de validação"
     exit 1
 }
@@ -47,6 +49,20 @@ case "$cmd" in
         mkdir -p "$ROOT/data/output/passo_a_passo" "$ROOT/data/output/checkpoints"
         MPLBACKEND=Agg python3 "$ROOT/src/main.py"
         echo "[OK] Resultados em data/output/"
+        ;;
+    passo-a-passo)
+        check_python_deps
+        if [ ! -f "$ROOT/data/tiles/metadados_tiles.json" ]; then
+            echo "[ERRO] Tiles não encontrados em data/tiles/"
+            echo "       Download: https://drive.google.com/drive/folders/1Gux57VofI_bxgt66hlXgaVlp_s21emNl"
+            exit 1
+        fi
+        mkdir -p "$ROOT/data/output/passo_a_passo"
+        MPLBACKEND=Agg python3 "$ROOT/src/main.py" --somente-passo-a-passo
+        ;;
+    figuras)
+        check_python_deps
+        MPLBACKEND=Agg python3 "$ROOT/src/figuras_relatorio.py"
         ;;
     anotar)
         check_python_deps

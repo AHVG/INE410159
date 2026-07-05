@@ -323,7 +323,7 @@ HSV não chegou a produzir.
 
 | Arquivo | Descrição |
 |---------|-----------|
-| `passo_a_passo/tile_XXXX.png` | 8 etapas do pipeline por tile selecionado |
+| `passo_a_passo/tile_XXXX.png` | 9 painéis do pipeline por tile selecionado |
 | `hist_deteccoes_por_tile.png` | Distribuição de detecções |
 | `hist_areas_deteccao.png` | Distribuição de áreas |
 | `top10_tiles.png` | Top 10 por detecções |

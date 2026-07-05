@@ -132,6 +132,59 @@ def processar_tile(
     }
 
 
+def _passo_a_passo_sincronizado(path: str) -> bool:
+    if not os.path.exists(path):
+        return False
+    img = cv2.imread(path)
+    return img is not None and img.shape[:2] == (2094, 1920)
+
+
+def _regenerar_passo_tile(info: dict[str, Any], tiles_dir: str, passo_a_passo_dir: str) -> str:
+    out = os.path.join(passo_a_passo_dir, info["arquivo"].replace(".jpg", ".png"))
+    if _passo_a_passo_sincronizado(out):
+        return "sincronizado"
+
+    img_bgr = cv2.imread(os.path.join(tiles_dir, info["arquivo"]))
+    if img_bgr is None:
+        return "erro"
+    if np.mean(img_bgr) < 15:
+        return "preto"
+    r, _, _ = detectar_cronometrado(img_bgr)
+    salvar_passo_a_passo(r, info["arquivo"], passo_a_passo_dir)
+    return "ok"
+
+
+def regenerar_passo_a_passo_todos(
+    tiles_dir: str,
+    passo_a_passo_dir: str,
+) -> tuple[int, int, int]:
+    """Regenera as figuras de passo a passo para todos os tiles não pretos."""
+    os.makedirs(passo_a_passo_dir, exist_ok=True)
+    with open(os.path.join(tiles_dir, "metadados_tiles.json")) as f:
+        meta = json.load(f)
+
+    ok = sincronizados = pretos = erros = 0
+    total = len(meta["tiles"])
+    print(f"[INFO] Sincronizando passo a passo de {total} tiles...")
+
+    for i, info in enumerate(meta["tiles"], 1):
+        status = _regenerar_passo_tile(info, tiles_dir, passo_a_passo_dir)
+        if status == "ok":
+            ok += 1
+        elif status == "sincronizado":
+            sincronizados += 1
+        elif status == "preto":
+            pretos += 1
+        else:
+            erros += 1
+        if i % 50 == 0 or i == total:
+            print(f"  {i}/{total} verificados ({ok} regenerados, {sincronizados} já sincronizados)...")
+
+    print(f"[INFO] Passo a passo sincronizado: {ok} regenerados, "
+          f"{sincronizados} já estavam certos, {pretos} tiles pretos ignorados, {erros} erros.")
+    return ok + sincronizados, pretos, erros
+
+
 def selecionar_tiles_passo_a_passo(
     tiles: list[dict[str, Any]],
     tiles_dir: str,
