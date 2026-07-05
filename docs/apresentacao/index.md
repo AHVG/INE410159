@@ -7,8 +7,9 @@ estrutura do relatório ([`../relatorio/index.md`](../relatorio/index.md)).
 Fonte: [`apresentacao.tex`](apresentacao.tex). Compilar com
 [`compilar_apresentacao.sh`](compilar_apresentacao.sh) ou `./dev.sh apresentacao`.
 
-> A Parte II usa `\textcolor{red}{[Pendente]}` onde faltam resultados da frente
-> neural. Material-fonte em [`../rede_neural/`](../rede_neural/).
+> A Parte II já inclui as contagens finais por parcela/composição e estatísticas
+> de área. Permanecem pendentes apenas métricas de teste, curvas e figuras
+> qualitativas da frente neural.
 
 ---
 
@@ -41,7 +42,7 @@ PARTE II — Redes Neurais (SAM 3 + YOLOv8)         [slide divisor]
  19. Etapas 2 e 3 — divisão espacial e correção (tabela do dataset)
  20. Etapa 4 — treinamento do YOLOv8x (otimização bayesiana)
  21. Etapas 5 e 6 — inferência e segmentação
- 22. Métricas e resultados (PENDENTE)
+ 22. Métricas e resultados
 
 SÍNTESE — Comparação e Conclusões                 [slide divisor]
  23. Comparação das duas abordagens (tabela)
@@ -61,9 +62,11 @@ SÍNTESE — Comparação e Conclusões                 [slide divisor]
   [`../rede_neural/figuras/`](../rede_neural/figuras/) e
   [`../rede_neural/resultados/`](../rede_neural/resultados/).
 
-## Ao preencher a Parte II
+## Pendências da Parte II
 
-1. Adicionar as métricas reais no slide 22 e na tabela do slide 23 (célula
-   "Resultado" → substituir `a definir`).
-2. Inserir figuras qualitativas de detecção/segmentação como novos slides após o 21.
-3. Remover os marcadores `\textcolor{red}{[Pendente]}`.
+1. Adicionar métricas de teste quando disponíveis: Precisão, Recall, F1, mAP50 e
+   mAP50-95.
+2. Inserir curvas Precision-Recall, curvas de treino e importância dos
+   hiperparâmetros.
+3. Inserir figuras qualitativas de detecção/segmentação como novos slides após o
+   21.

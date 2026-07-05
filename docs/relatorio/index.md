@@ -11,9 +11,9 @@ MataDIV):
 
 Fonte LaTeX: [`relatorio.tex`](relatorio.tex). Compilar com [`compilar.sh`](compilar.sh).
 
-> Enquanto a Parte II não tiver resultados, usar o marcador `\pendente{...}` no
-> `.tex` (renderiza em vermelho). Ver o checklist em
-> [`../rede_neural/index.md`](../rede_neural/index.md).
+> A Parte II já possui contagens por parcela/composição e estatísticas de área.
+> Manter `\pendente{...}` apenas para métricas de teste, curvas, importância de
+> hiperparâmetros e figuras qualitativas ainda ausentes.
 
 ---
 
@@ -32,7 +32,7 @@ PARTE I — Solução com Visão Computacional Clássica
 
 PARTE II — Solução com Redes Neurais (SAM 3 + YOLOv8)
 8. Metodologia da Abordagem Neural
-9. Resultados da Abordagem Neural         ← pendente (ver ../rede_neural/)
+9. Resultados da Abordagem Neural
 
 PARTE III — Síntese
 10. Discussão Comparativa
@@ -117,11 +117,16 @@ Conteúdo transcrito de [`../rede_neural/relatorio.md`](../rede_neural/relatorio
 - 3.3.6 Segmentação com SAM 3 por prompt geométrico (tabela de parâmetros).
 - 3.3.7 Métricas de avaliação (IoU, P, R, F1, AP, mAP50, mAP50-95).
 
-### 9. Resultados da Abordagem Neural — **PENDENTE**
-A preencher a partir de [`../rede_neural/resultados/`](../rede_neural/resultados/):
-métricas no teste, curvas P-R e de treino, importância dos hiperparâmetros,
-contagem final por categoria e figuras qualitativas. Enquanto vazio, manter
-`\pendente{...}`.
+### 9. Resultados da Abordagem Neural
+- Contagem geral: 144 parcelas, 60 com CP plantada, 2.256 CP plantadas e 1.226 CP
+  mapeadas.
+- Taxa global de detecção: 54,3%; 1.228 copas segmentadas.
+- Categorias finais: 564 YOLO+SAM3, 267 só YOLO e 395 só SAM3.
+- Resultados por composição, com destaque para D12 (68,3%), D7 (65,9%), D8
+  (65,7%) e D11 (62,7%).
+- Estatísticas de área: média 5,55 m², mediana 4,29 m², máximo 24,26 m².
+- Ainda pendente: métricas no teste, curvas P-R e de treino, importância dos
+  hiperparâmetros e figuras qualitativas.
 
 ---
 

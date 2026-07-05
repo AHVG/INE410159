@@ -12,20 +12,18 @@ O relatório final que integra as duas soluções fica em
 | Arquivo | Descrição |
 |---------|-----------|
 | `sam3_yolo_detection.pdf` | PDF original da frente neural (fonte imutável). |
-| `relatorio.md` | Transcrição editável do texto do PDF (Introdução → Métodos). |
-| `figuras/` | Imagens referenciadas no texto (`[FIGURA X]` do original). A preencher. |
-| `resultados/` | Métricas e figuras de resultados. A preencher (não existem ainda). |
+| `relatorio.md` | Transcrição editável do texto do PDF e síntese dos resultados disponíveis. |
+| `figuras/` | Imagens referenciadas no texto e figuras quantitativas geradas. |
+| `resultados/` | CSVs, relatório automático e métricas consolidadas por parcela/composição. |
 | `index.md` | Este arquivo. |
 
 ## Estado do material
 
-O PDF original **termina em "3.3.7 Métricas de avaliação"**. Está completo até a
-metodologia; **faltam Resultados, Discussão e Conclusão**, e todas as figuras são
-placeholders `[FIGURA X]`.
-
-No relatório final ([`../relatorio/relatorio.tex`](../relatorio/relatorio.tex)),
-esses vãos aparecem como marcadores `\pendente{...}` (em vermelho). Ao preencher
-esta pasta, atualizar os marcadores correspondentes no `.tex` e no `.md`.
+O PDF original **termina em "3.3.7 Métricas de avaliação"**. A nova leva de
+resultados acrescenta a contagem final por parcela/composição, estatísticas de
+área das copas segmentadas e seis figuras quantitativas. Ainda não foram incluídas
+as métricas de teste do detector (Precisão, Recall, F1, mAP50, mAP50-95), curvas
+de treino/PR, importância de hiperparâmetros e figuras qualitativas.
 
 ## Como preencher (checklist)
 
@@ -39,14 +37,22 @@ esta pasta, atualizar os marcadores correspondentes no `.tex` e no `.md`.
 - [ ] `cruzamento_categorias.png` — YOLO × SAM 3, 3 categorias (§3.3.5)
 - [ ] `segmentacao_bbox_prompt.png` — recorte / máscara / polígono (§3.3.6)
 - [ ] `iou_exemplo.png` — cálculo de IoU (§3.3.7)
+- [x] `fig01_plantadas_vs_detectadas.png` — plantadas vs. detectadas por composição.
+- [x] `fig02_categorias_empilhadas.png` — categorias YOLO/SAM3 por composição.
+- [x] `fig03_histograma_areas.png` — distribuição das áreas segmentadas.
+- [x] `fig04_boxplot_areas_composicao.png` — áreas por composição.
+- [x] `fig05_taxa_deteccao.png` — taxa de detecção por composição.
+- [x] `fig06_donut_categorias.png` — proporção das categorias de mapeamento.
 
 ### Resultados → `resultados/`
 - [ ] Métricas de detecção no teste: Precisão, Recall, F1, mAP50, mAP50-95.
 - [ ] Curva Precision-Recall e curvas de treino (loss / mAP por época).
 - [ ] Importância dos hiperparâmetros (Random Forest / Mean Decrease Impurity).
-- [ ] Contagem final de indivíduos mapeados por categoria (i / ii / iii).
+- [x] Contagem final de indivíduos mapeados por categoria (i / ii / iii).
+- [x] Contagem por parcela e resumo por composição.
+- [x] Estatísticas de área das copas segmentadas.
 - [ ] Figuras qualitativas de detecção e segmentação sobre o ortomosaico.
-- [ ] Texto de Discussão e Conclusão da frente neural.
+- [x] Texto preliminar de Resultados, Discussão e Conclusão com base nas contagens.
 
 ## Onde isso entra no relatório final
 

@@ -4,9 +4,9 @@
 > (`sam3_yolo_detection.pdf`). Serve de **entrada** para a geração do relatório
 > final combinado em [`../relatorio/relatorio.tex`](../relatorio/relatorio.tex).
 >
-> **Estado:** o material original termina em "3.3.7 Métricas de avaliação".
-> **Não há Resultados, Discussão nem Conclusão** — ver a seção "Pendências" no
-> final e o [`index.md`](index.md) desta pasta.
+> **Estado:** o material original termina em "3.3.7 Métricas de avaliação". A
+> seção de resultados abaixo foi acrescentada a partir da nova leva de CSVs e
+> figuras em [`resultados/`](resultados/) e [`figuras/`](figuras/).
 >
 > Marcadores `[FIGURA X]` / `[TABELA X]` do original foram mantidos e mapeados
 > para arquivos esperados em [`figuras/`](figuras/) e [`resultados/`](resultados/).
@@ -274,16 +274,132 @@ a 0,95).
 
 ---
 
+## 4. Resultados
+
+A consolidação por parcela foi realizada nas 144 parcelas do MataDIV. Dessas, 60
+possuem _Cecropia pachystachya_ plantada. No total, foram contabilizadas 2.256
+plantas de CP no desenho experimental e 1.226 indivíduos mapeados pelo pipeline
+SAM 3 + YOLOv8, correspondendo a uma taxa global de detecção de **54,3%**.
+
+### 4.1 Contagem geral e categorias de mapeamento
+
+As detecções finais foram organizadas em três categorias: indivíduos detectados
+pelo YOLO e já associados a máscara prévia do SAM 3, indivíduos novos detectados
+apenas pelo YOLO e segmentados posteriormente por `bbox prompt`, e indivíduos
+segmentados pelo SAM 3 na etapa inicial que não foram recuperados pelo YOLO.
+
+| Categoria | Quantidade | Proporção |
+|---|---:|---:|
+| YOLO + SAM3 | 564 | 46,0% |
+| Só YOLO | 267 | 21,8% |
+| Só SAM3 | 395 | 32,2% |
+| **Total mapeado** | **1.226** | **100,0%** |
+
+Em termos de fontes intermediárias, foram registradas 831 detecções YOLO dentro
+das parcelas, 961 máscaras do SAM 3 por prompt textual e 267 máscaras adicionais
+do SAM 3 por prompt geométrico (`bbox prompt`). O total de copas segmentadas foi
+1.228, dois polígonos a mais que o total de indivíduos mapeados, diferença
+compatível com pequenas duplicidades ou registros auxiliares de segmentação no
+processamento.
+
+> Figura quantitativa: `figuras/fig06_donut_categorias.png`
+
+### 4.2 Resultados por composição
+
+As composições com _Cecropia_ plantada apresentaram taxas de detecção distintas.
+As maiores taxas ocorreram em D12 (68,3%), D7 (65,9%), D8 (65,7%) e D11 (62,7%).
+A monocultura D1 concentrou a maior quantidade absoluta de plantas, com 1.200
+indivíduos plantados, mas teve taxa de detecção menor, de 36,8%, indicando maior
+dificuldade em cenários com copas muito próximas ou sobrepostas.
+
+| Comp. | Parcelas | Plantadas | Mapeadas | Segmentadas | Taxa |
+|---|---:|---:|---:|---:|---:|
+| D1 | 12 | 1.200 | 441 | 442 | 36,8% |
+| D7 | 12 | 396 | 261 | 260 | 65,9% |
+| D8 | 12 | 396 | 260 | 259 | 65,7% |
+| D11 | 12 | 204 | 128 | 129 | 62,7% |
+| D12 | 12 | 60 | 41 | 41 | 68,3% |
+
+Também houve mapeamentos em composições sem CP plantada no desenho experimental
+(D2, D3, D4, D5, D6, D9 e D10), totalizando 95 indivíduos mapeados. Esses registros
+devem ser interpretados com cuidado: podem representar indivíduos espontâneos,
+erros de cadastro/posição ou falsos positivos do pipeline.
+
+> Figuras quantitativas: `figuras/fig01_plantadas_vs_detectadas.png`,
+> `figuras/fig02_categorias_empilhadas.png` e `figuras/fig05_taxa_deteccao.png`
+
+### 4.3 Área das copas segmentadas
+
+Foram registradas 1.228 áreas individuais de copas segmentadas. A área média foi
+5,55 m², com mediana de 4,29 m², desvio padrão de 3,93 m² e máximo de 24,26 m².
+O mínimo arredondado aparece como 0,00 m² no relatório automático, mas no CSV é um
+valor positivo muito pequeno, indicando polígonos residuais ou segmentações quase
+nulas.
+
+| Estatística | Valor |
+|---|---:|
+| N copas segmentadas | 1.228 |
+| Área média | 5,55 m² |
+| Área mediana | 4,29 m² |
+| Área mínima | 0,00 m² |
+| Área máxima | 24,26 m² |
+| Desvio padrão | 3,93 m² |
+
+As maiores áreas médias por composição ocorreram em D11 (8,11 m²), D8 (7,00 m²) e
+D6 (6,66 m²). A D1 apresentou área média menor (3,86 m²), coerente com maior
+adensamento e maior fragmentação/oclusão das copas em monocultura.
+
+> Figuras quantitativas: `figuras/fig03_histograma_areas.png` e
+> `figuras/fig04_boxplot_areas_composicao.png`
+
+## 5. Discussão
+
+Os resultados indicam que a integração entre SAM 3 e YOLOv8 é viável para mapear
+copas de _C. pachystachya_ em escala de parcela, especialmente nas composições
+mistas com menor densidade da espécie-alvo. A taxa global de 54,3% deve ser lida
+em conjunto com a estrutura do experimento: a maior perda ocorreu na D1, onde há
+maior número absoluto de indivíduos e copas adjacentes, condição que dificulta a
+separação individual tanto para detecção quanto para segmentação.
+
+A decomposição por categorias mostra que as duas etapas são complementares. O YOLO
+recuperou 267 indivíduos não presentes nas máscaras iniciais do SAM 3, enquanto
+395 indivíduos segmentados pelo SAM 3 não foram detectados pelo YOLO. Assim, usar
+apenas uma das fontes reduziria substancialmente a cobertura final. O uso do SAM 3
+como gerador inicial de máscaras e como segmentador posterior por `bbox prompt`
+também reduziu o esforço de desenho manual de polígonos.
+
+As detecções em composições sem CP plantada precisam de validação adicional. Elas
+podem refletir regeneração espontânea ou inconsistências espaciais, mas também
+podem representar falsos positivos em espécies visualmente parecidas. A ausência,
+nesta leva, das métricas de teste do detector (Precisão, Recall, F1, mAP50 e
+mAP50-95) impede separar completamente erro de detecção, erro de segmentação e
+diferenças reais entre o desenho experimental e a cena observada.
+
+## 6. Conclusão
+
+A nova consolidação de resultados completa a contagem final por parcela e por
+composição da frente neural. O pipeline SAM 3 + YOLOv8 mapeou 1.226 indivíduos de
+_C. pachystachya_ e segmentou 1.228 copas, com área média de 5,55 m². As melhores
+taxas de detecção ocorreram em D12, D7, D8 e D11, enquanto a D1 concentrou o maior
+desafio por densidade e proximidade entre copas.
+
+Como próximos passos, permanecem a incorporação das métricas formais de avaliação
+do detector, das curvas de treino/Precision-Recall, da importância dos
+hiperparâmetros e de figuras qualitativas sobre o ortomosaico. Esses artefatos são
+necessários para avaliar o desempenho intrínseco do modelo, mas a contagem por
+parcela já permite discutir o comportamento ecológico e operacional do pipeline.
+
+---
+
 ## Pendências (a preencher para o relatório final)
 
-O material original **termina aqui**. Para completar a Parte II do relatório final,
-faltam — colocar os artefatos em [`resultados/`](resultados/):
+Após a nova leva de resultados, ainda faltam os seguintes artefatos:
 
 - [ ] **4. Resultados**: métricas de detecção no teste (Precisão, Recall, F1,
       mAP50, mAP50-95).
 - [ ] Curvas Precision-Recall e curvas de treino/validação (loss, mAP por época).
 - [ ] Importância dos hiperparâmetros (Random Forest / Mean Decrease Impurity).
-- [ ] Contagem final de indivíduos mapeados por categoria (i / ii / iii).
+- [x] Contagem final de indivíduos mapeados por categoria (i / ii / iii).
 - [ ] Figuras qualitativas de detecção e segmentação sobre o ortomosaico.
-- [ ] **5. Discussão** e **6. Conclusão** da frente neural.
+- [x] **5. Discussão** e **6. Conclusão** preliminares da frente neural.
 - [ ] Figuras do texto (todos os `[FIGURA X]` acima) em [`figuras/`](figuras/).

@@ -436,16 +436,37 @@
 \end{frame}
 
 \begin{frame}{Métricas e Resultados (Abordagem Neural)}
-    \textbf{Métricas de avaliação:} Precisão, Recall, F1, AP, mAP50 e mAP50-95
-    (IoU de 0,5 para VP; uma única classe).
+    \begin{columns}[T]
+        \begin{column}{0.48\textwidth}
+            \textbf{Contagem final}
+            \begin{itemize}
+                \item 144 parcelas; 60 com CP plantada.
+                \item 2.256 CP plantadas.
+                \item 1.226 CP mapeadas.
+                \item Taxa global: 54,3\%.
+                \item 1.228 copas segmentadas.
+            \end{itemize}
+        \end{column}
+        \begin{column}{0.48\textwidth}
+            \textbf{Categorias}
+            \begin{itemize}
+                \item YOLO + SAM 3: 564 (46,0\%).
+                \item Só YOLO: 267 (21,8\%).
+                \item Só SAM 3: 395 (32,2\%).
+                \item Área média: 5,55 m².
+                \item Área mediana: 4,29 m².
+            \end{itemize}
+        \end{column}
+    \end{columns}
 
-    \vspace{0.6em}
-    \begin{block}{Resultados quantitativos}
-        \textit{\textcolor{red}{[Pendente]}} O material da frente neural encerra em
-        ``Métricas de avaliação''. A preencher: mAP50/mAP50-95, curvas
-        Precision-Recall e de treino, importância dos hiperparâmetros, contagem final
-        de indivíduos mapeados e figuras qualitativas de detecção/segmentação.
+    \vspace{0.4em}
+    \begin{block}{Leitura por composição}
+        Melhores taxas: D12 (68,3\%), D7 (65,9\%), D8 (65,7\%) e D11 (62,7\%).
+        A D1 concentrou o maior desafio: 1.200 plantadas e 441 mapeadas (36,8\%).
     \end{block}
+
+    \footnotesize Pendente: métricas de teste do detector (P/R/F1, mAP50 e
+    mAP50-95), curvas e figuras qualitativas.
 \end{frame}
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -466,7 +487,7 @@
             Custo & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU, 500 épocas) \\
             Segmentação & Fecho convexo & Máscara SAM 3 \\
             Discriminação & Fraca (espectral) & Potencialmente alta \\
-            Resultado & P 84,6 / R 52,4 / F1 64,7 & \textcolor{red}{a definir} \\
+            Resultado & P 84,6 / R 52,4 / F1 64,7 & 1.226 mapeadas; 54,3\% global \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -479,11 +500,11 @@
         \item O pipeline \textbf{clássico} é rápido, interpretável e adequado a uma
         primeira estimativa espacial: 1.218 regiões, 84,6\% de precisão, 52,4\% de recall.
         \item O pipeline \textbf{neural} reduz a anotação via SAM 3 e evita vazamento com
-        divisão espacial; falta consolidar os resultados quantitativos.
+        divisão espacial; mapeou 1.226 indivíduos e segmentou 1.228 copas.
         \item \textbf{Próximos passos (clássica)}: refinar HSV, consolidar detecções entre
         tiles, testar descritores de textura.
-        \item \textbf{Próximos passos (neural)}: concluir a avaliação, estender a correção
-        ao treino e testar replicabilidade para outras espécies.
+        \item \textbf{Próximos passos (neural)}: incorporar P/R/F1 e mAP, revisar
+        composições sem CP plantada e testar replicabilidade para outras espécies.
         \item \textbf{Integração}: clássica como pré-filtro rápido, neural como refinamento.
     \end{itemize}
 \end{frame}

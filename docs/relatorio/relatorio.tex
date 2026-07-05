@@ -962,13 +962,134 @@ localização.
 
 \section{Resultados da Abordagem Neural}
 
-\pendente{Esta seção depende dos resultados quantitativos do pipeline SAM 3 + YOLOv8,
-que ainda não constam no material fornecido (o relatório da frente neural termina em
-``Métricas de avaliação''). Preencher com: métricas de detecção no conjunto de teste
-(Precisão, Recall, F1, mAP50, mAP50-95), curvas Precision-Recall e de treinamento,
-importância dos hiperparâmetros (Random Forest / Mean Decrease Impurity), contagem
-final de indivíduos mapeados por categoria (i/ii/iii) e figuras qualitativas de
-detecção e segmentação sobre o ortomosaico.}
+A nova consolidação da frente neural avaliou as 144 parcelas do MataDIV, das quais
+60 possuem \textit{Cecropia pachystachya} plantada. No total, o desenho
+experimental contém 2.256 indivíduos plantados de CP, enquanto o pipeline SAM 3 +
+YOLOv8 mapeou 1.226 indivíduos, resultando em taxa global de detecção de 54,3\%.
+Foram produzidas 1.228 segmentações de copa.
+
+\subsection{Categorias de mapeamento}
+
+Os indivíduos mapeados foram organizados em três categorias: (i) detectados pelo
+YOLO e já associados a máscara prévia do SAM 3, (ii) detectados apenas pelo YOLO e
+segmentados posteriormente com SAM 3 por \textit{bbox prompt}, e (iii)
+segmentados pelo SAM 3 na etapa inicial, mas não detectados pelo YOLO. A
+Tabela~\ref{tab:neural-categorias} resume a composição final.
+
+\begin{table}[H]
+\centering
+\caption{Categorias finais do mapeamento neural.}
+\label{tab:neural-categorias}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Categoria} & \textbf{Quantidade} & \textbf{Proporção} \\
+\midrule
+YOLO + SAM 3 & 564 & 46,0\% \\
+Só YOLO & 267 & 21,8\% \\
+Só SAM 3 & 395 & 32,2\% \\
+\textbf{Total mapeado} & \textbf{1.226} & \textbf{100,0\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Em termos de fontes intermediárias, foram registradas 831 detecções YOLO dentro
+das parcelas, 961 máscaras do SAM 3 por \textit{text prompt} e 267 máscaras
+adicionais do SAM 3 por \textit{bbox prompt}. A diferença entre 1.226 indivíduos
+mapeados e 1.228 copas segmentadas indica a presença de dois registros adicionais
+de segmentação, possivelmente duplicidades residuais ou polígonos auxiliares
+mantidos no processamento.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.82\textwidth]{../rede_neural/figuras/fig06_donut_categorias.png}
+    \caption{Proporção das categorias finais do mapeamento neural.}
+    \label{fig:neural-donut}
+\end{figure}
+
+\subsection{Resultados por composição}
+
+As taxas variaram entre composições. Entre as composições com CP plantada, as
+maiores taxas ocorreram em D12 (68,3\%), D7 (65,9\%), D8 (65,7\%) e D11
+(62,7\%). A D1, monocultura com 1.200 indivíduos plantados, apresentou 441
+indivíduos mapeados e taxa de 36,8\%, sugerindo maior dificuldade em cenário de
+copas densas e adjacentes.
+
+\begin{table}[H]
+\centering
+\caption{Resultados da abordagem neural nas composições com CP plantada.}
+\label{tab:neural-composicoes}
+\begin{tabular}{lrrrrr}
+\toprule
+\textbf{Comp.} & \textbf{Parcelas} & \textbf{Plantadas} & \textbf{Mapeadas} & \textbf{Segmentadas} & \textbf{Taxa} \\
+\midrule
+D1  & 12 & 1.200 & 441 & 442 & 36,8\% \\
+D7  & 12 & 396   & 261 & 260 & 65,9\% \\
+D8  & 12 & 396   & 260 & 259 & 65,7\% \\
+D11 & 12 & 204   & 128 & 129 & 62,7\% \\
+D12 & 12 & 60    & 41  & 41  & 68,3\% \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Também foram mapeados 95 indivíduos em composições sem CP plantada no desenho
+experimental. Esses registros devem ser revisados em campo ou por inspeção visual,
+pois podem representar indivíduos espontâneos, pequenos deslocamentos entre mapa e
+parcelas ou falsos positivos em espécies visualmente semelhantes.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../rede_neural/figuras/fig01_plantadas_vs_detectadas.png}
+    \caption{Indivíduos plantados e mapeados por composição.}
+    \label{fig:neural-plantadas-detectadas}
+\end{figure}
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=\textwidth]{../rede_neural/figuras/fig05_taxa_deteccao.png}
+    \caption{Taxa de detecção por composição.}
+    \label{fig:neural-taxa}
+\end{figure}
+
+\subsection{Áreas das copas segmentadas}
+
+As 1.228 copas segmentadas apresentaram área média de 5,55 m², mediana de 4,29
+m², desvio padrão de 3,93 m² e máximo de 24,26 m². O mínimo arredondado é 0,00
+m², mas corresponde no CSV a valor positivo muito pequeno, compatível com
+polígonos residuais ou segmentações quase nulas.
+
+\begin{table}[H]
+\centering
+\caption{Estatísticas de área das copas segmentadas pela abordagem neural.}
+\label{tab:neural-areas}
+\begin{tabular}{lr}
+\toprule
+\textbf{Estatística} & \textbf{Valor} \\
+\midrule
+N copas segmentadas & 1.228 \\
+Área média & 5,55 m² \\
+Área mediana & 4,29 m² \\
+Área mínima & 0,00 m² \\
+Área máxima & 24,26 m² \\
+Desvio padrão & 3,93 m² \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+As maiores áreas médias ocorreram em D11 (8,11 m²), D8 (7,00 m²) e D6
+(6,66 m²). A D1 apresentou média menor (3,86 m²), coerente com maior adensamento
+e maior fragmentação visual das copas em monocultura.
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.86\textwidth]{../rede_neural/figuras/fig03_histograma_areas.png}
+    \caption{Distribuição das áreas das copas segmentadas.}
+    \label{fig:neural-hist-areas}
+\end{figure}
+
+Permanecem pendentes, para a avaliação intrínseca do detector, as métricas de
+teste (Precisão, Recall, F1, mAP50 e mAP50-95), as curvas Precision-Recall e de
+treino, a importância dos hiperparâmetros e figuras qualitativas sobre o
+ortomosaico.
 
 % ═════════════════════════════════════════════════════════════════════════════
 \part{Síntese Comparativa}
@@ -996,7 +1117,7 @@ Interpretabilidade & Alta: cada etapa é auditável & Baixa: decisão distribuí
 Custo computacional & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
 Segmentação de copa & Fecho convexo aproximado & Máscara do SAM 3 (polígono refinado) \\
 Discriminação de espécie & Fraca (confusão espectral) & Potencialmente alta (aprende contexto) \\
-Resultado & P 84,6\% / R 52,4\% / F1 64,7\% & \pendente{a definir} \\
+Resultado & P 84,6\% / R 52,4\% / F1 64,7\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -1032,9 +1153,10 @@ deixa escapar copas reais.
 A \textbf{abordagem neural} (Parte II) propõe um pipeline semi-automatizado que
 integra o SAM 3 e o YOLOv8, com destaque para a curadoria por exclusão, que reduz o
 esforço de anotação, e para a divisão espacial do dataset, que evita vazamento de
-dados. A metodologia está completa e descrita em detalhe; \pendente{os resultados
-quantitativos da frente neural ainda precisam ser incorporados a partir do material
-final dessa etapa.}
+dados. A consolidação por parcela mapeou 1.226 indivíduos, segmentou 1.228 copas e
+atingiu taxa global de detecção de 54,3\% em relação aos indivíduos plantados. As
+maiores taxas ocorreram nas composições D12, D7, D8 e D11, enquanto a D1 mostrou o
+maior desafio por densidade e proximidade entre copas.
 
 \subsection*{Trabalhos futuros}
 
@@ -1043,9 +1165,10 @@ final dessa etapa.}
     anotados, consolidar detecções entre tiles para evitar contagens repetidas,
     recalibrar os filtros geométricos e incorporar descritores de textura (LBP,
     Haralick) para explorar a estrutura radial das folhas.
-    \item \textbf{Abordagem neural:} concluir a avaliação quantitativa, estender a
-    correção semi-automatizada ao conjunto de treinamento e testar a replicabilidade
-    do pipeline para outras espécies arbóreas.
+    \item \textbf{Abordagem neural:} incorporar métricas formais de teste
+    (Precisão, Recall, F1, mAP50 e mAP50-95), revisar detecções em composições sem
+    CP plantada e testar a replicabilidade do pipeline para outras espécies
+    arbóreas.
     \item \textbf{Integração:} usar o pipeline clássico como pré-filtro rápido e o
     neural como refinamento, ou comparar as duas saídas para estimar incerteza no
     mapeamento final.
