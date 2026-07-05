@@ -180,7 +180,7 @@
             Tamanho em disco & 899,0 MB \\
             Tiles pretos ignorados & 229 \\
             Tiles processados & 361 \\
-            Validação manual & 18 tiles revisados \\
+            Validação manual & 35 tiles revisados \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -298,13 +298,14 @@
             \toprule
             \textbf{Métrica} & \textbf{Valor} \\
             \midrule
-            Tiles revisados & 18/18 \\
-            Verdadeiros positivos (TP) & 33 \\
-            Falsos positivos (FP) & 6 \\
-            Falsos negativos / faltantes (FN) & 30 \\
-            Precisão & 84,6\% \\
-            Recall & 52,4\% \\
-            F1 & 64,7\% \\
+            Tiles revisados & 35/35 \\
+            Detecções avaliadas & 146 \\
+            Verdadeiros positivos (TP) & 126 \\
+            Falsos positivos (FP) & 20 \\
+            Falsos negativos / faltantes (FN) & 50 \\
+            Precisão & 86,3\% \\
+            Recall & 71,6\% \\
+            F1 & 78,3\% \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -487,7 +488,7 @@
             Custo & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU, 500 épocas) \\
             Segmentação & Fecho convexo & Máscara SAM 3 \\
             Discriminação & Fraca (espectral) & Potencialmente alta \\
-            Resultado & P 84,6 / R 52,4 / F1 64,7 & 1.226 mapeadas; 54,3\% global \\
+            Resultado & P 86,3 / R 71,6 / F1 78,3 & 1.226 mapeadas; 54,3\% global \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -498,7 +499,7 @@
 \begin{frame}{Conclusões e Trabalhos Futuros}
     \begin{itemize}
         \item O pipeline \textbf{clássico} é rápido, interpretável e adequado a uma
-        primeira estimativa espacial: 1.218 regiões, 84,6\% de precisão, 52,4\% de recall.
+        primeira estimativa espacial: 1.218 regiões, 86,3\% de precisão, 71,6\% de recall.
         \item O pipeline \textbf{neural} reduz a anotação via SAM 3 e evita vazamento com
         divisão espacial; mapeou 1.226 indivíduos e segmentou 1.228 copas.
         \item \textbf{Próximos passos (clássica)}: refinar HSV, consolidar detecções entre

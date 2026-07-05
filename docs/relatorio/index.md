@@ -9,7 +9,8 @@ MataDIV):
 - **Parte II — Redes Neurais (SAM 3 + YOLOv8)**, cujo material-fonte fica em
   [`../rede_neural/`](../rede_neural/).
 
-Fonte LaTeX: [`relatorio.tex`](relatorio.tex). Compilar com [`compilar.sh`](compilar.sh).
+Fonte LaTeX: [`relatorio.tex`](relatorio.tex). Compilar pela raiz com
+`./dev.sh relatorio`.
 
 > A Parte II já possui contagens por parcela/composição e estatísticas de área.
 > Manter `\pendente{...}` apenas para métricas de teste, curvas, importância de
@@ -149,15 +150,11 @@ Conteúdo transcrito de [`../rede_neural/relatorio.md`](../rede_neural/relatorio
 |---------|-----------|
 | `relatorio/relatorio.tex` | Fonte LaTeX do relatório final combinado |
 | `relatorio/relatorio.pdf` | PDF compilado |
-| `relatorio/compilar.sh` | Compila `relatorio.tex` → `relatorio.pdf` |
 | `relatorio/index.md` | Este arquivo (estrutura do relatório) |
 | `apresentacao/` | Slides finais (ver `apresentacao/index.md`) |
 | `rede_neural/` | Material-fonte da frente neural (ver `rede_neural/index.md`) |
 
 ```bash
-cd docs/relatorio/ && ./compilar.sh              # gera relatorio.pdf
-cd docs/apresentacao/ && ./compilar_apresentacao.sh
-# ou, da raiz:
 ./dev.sh relatorio
 ./dev.sh apresentacao
 ```

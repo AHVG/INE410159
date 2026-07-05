@@ -482,8 +482,17 @@
   "n_candidatos": 7,
   "n_deteccoes": 4,
   "coverage_pct": 5.535030364990234,
-  "tempo_s": 0.2153482437133789,
-  "memoria_mb": 64.07545280456543,
+  "tempo_s": 0.06271052360534668,
+  "memoria_mb": 64.07224464416504,
   "falsos_positivos": [],
-  "faltantes": []
+  "faltantes": [
+    {
+      "bbox": [
+        1886,
+        61,
+        180,
+        141
+      ]
+    }
+  ]
 }

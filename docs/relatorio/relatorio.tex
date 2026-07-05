@@ -223,7 +223,7 @@ intensidade média da imagem.
 
 O conjunto de validação fica em \texttt{data/validacao/}, com uma subpasta por
 imagem revisada (\texttt{<nome>.jpg}, \texttt{<nome>.json},
-\texttt{<nome>\_vis.png}). Atualmente há 18 JSONs de validação, todos revisados
+\texttt{<nome>\_vis.png}). Atualmente há 35 JSONs de validação, todos revisados
 manualmente. Cada JSON armazena a saída do detector em \texttt{embaubas}, os
 índices marcados como falso positivo em \texttt{falsos\_positivos} e caixas
 \texttt{faltantes} para copas visíveis que não foram detectadas.
@@ -552,7 +552,7 @@ tile\_0721.jpg & 10 &   794.666 & 57,14 & 25,49\% \\
 
 \subsection{Validação Manual}
 
-A validação compara a saída final do detector com a revisão manual de 18 tiles.
+A validação compara a saída final do detector com a revisão manual de 35 tiles.
 Em cada JSON revisado, as detecções confirmadas contam como verdadeiros
 positivos, os índices marcados em \texttt{falsos\_positivos} contam como falsos
 positivos e as caixas \texttt{faltantes} contam como falsos negativos.
@@ -565,22 +565,23 @@ positivos e as caixas \texttt{faltantes} contam como falsos negativos.
 \toprule
 \textbf{Métrica} & \textbf{Valor} \\
 \midrule
-Tiles revisados & 18/18 \\
-Verdadeiros positivos (TP) & 33 \\
-Falsos positivos (FP) & 6 \\
-Falsos negativos / faltantes (FN) & 30 \\
-Precisão & 84,6\% \\
-Recall & 52,4\% \\
-F1 & 64,7\% \\
+Tiles revisados & 35/35 \\
+Detecções avaliadas & 146 \\
+Verdadeiros positivos (TP) & 126 \\
+Falsos positivos (FP) & 20 \\
+Falsos negativos / faltantes (FN) & 50 \\
+Precisão & 86,3\% \\
+Recall & 71,6\% \\
+F1 & 78,3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A precisão de 84,6\% indica que a maior parte das regiões detectadas corresponde
-a embaúba na amostra revisada. O recall de 52,4\% mostra que o método ainda
-perde uma fração relevante das copas reais, principalmente quando a segmentação
-HSV não produz um candidato inicial ou quando a copa aparece com iluminação e
-cor fora da faixa definida.
+A precisão de 86,3\% indica que a maior parte das regiões detectadas corresponde
+a embaúba na amostra revisada. O recall de 71,6\% melhorou com a ampliação da
+amostra, mas ainda mostra que o método perde copas reais, principalmente quando a
+segmentação HSV não produz um candidato inicial ou quando a copa aparece com
+iluminação e cor fora da faixa definida.
 
 \subsection{Desempenho Computacional}
 
@@ -653,10 +654,10 @@ limiar de área máxima reduz agregações incompatíveis com uma copa individua
 
 \subsection{Leitura da Validação}
 
-A validação final mostra 33 verdadeiros positivos, 6 falsos positivos e 30
-falsos negativos. A precisão de 84,6\% indica que o filtro final de tamanho,
+A validação final mostra 126 verdadeiros positivos, 20 falsos positivos e 50
+falsos negativos em 35 tiles revisados. A precisão de 86,3\% indica que o filtro final de tamanho,
 circularidade e solidez reduziu bem os falsos positivos na amostra revisada. O
-recall de 52,4\%, por outro lado, mostra que muitas copas reais ainda não entram
+recall de 71,6\%, por outro lado, mostra que parte das copas reais ainda não entra
 na saída final, principalmente por dependerem de uma faixa HSV fixa.
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -1117,14 +1118,14 @@ Interpretabilidade & Alta: cada etapa é auditável & Baixa: decisão distribuí
 Custo computacional & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
 Segmentação de copa & Fecho convexo aproximado & Máscara do SAM 3 (polígono refinado) \\
 Discriminação de espécie & Fraca (confusão espectral) & Potencialmente alta (aprende contexto) \\
-Resultado & P 84,6\% / R 52,4\% / F1 64,7\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
+Resultado & P 86,3\% / R 71,6\% / F1 78,3\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 A abordagem clássica é leve, transparente e não exige anotação, mas esbarra na
 confusão espectral: como diversas espécies caem na mesma faixa de verde, o recall
-fica limitado (52,4\%) e há fusão de copas próximas. A abordagem neural procura
+fica limitado (71,6\%) e há fusão de copas próximas. A abordagem neural procura
 justamente superar essa limitação, aprendendo padrões visuais que vão além da cor e
 delegando a segmentação fina ao SAM 3. Em contrapartida, exige infraestrutura de
 GPU, um ciclo de treinamento longo e uma etapa (ainda que reduzida) de curadoria.
@@ -1146,7 +1147,7 @@ A \textbf{abordagem clássica} (Parte I) demonstrou ser viável para uma primeir
 estimativa da distribuição espacial da espécie: é eficiente, escalável por
 paralelismo e produz resultados interpretáveis pelas visualizações passo a passo.
 Foram detectadas 1.218 regiões em 361 tiles válidos, e a validação manual atingiu
-84,6\% de precisão e 52,4\% de recall. O filtro final reduz fortemente os falsos
+86,3\% de precisão e 71,6\% de recall. O filtro final reduz fortemente os falsos
 positivos, mas o recall limitado revela que a dependência de uma faixa HSV fixa
 deixa escapar copas reais.
 

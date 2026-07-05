@@ -5,8 +5,8 @@
   "n_candidatos": 2,
   "n_deteccoes": 0,
   "coverage_pct": 2.685856819152832,
-  "tempo_s": 0.20451855659484863,
-  "memoria_mb": 64.0678768157959,
+  "tempo_s": 0.058644771575927734,
+  "memoria_mb": 64.06502723693848,
   "falsos_positivos": [],
   "faltantes": []
 }

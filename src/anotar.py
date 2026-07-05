@@ -20,6 +20,10 @@ Uso::
 
     python3 src/anotar.py tile_0053            # cria se faltar e abre a janela
     python3 src/anotar.py caminho/img.jpg
+    python3 src/anotar.py data/validacao --pendentes
+    python3 src/anotar.py data/validacao --resumo
+    python3 src/anotar.py data/validacao --refazer-todos
+    python3 src/anotar.py tile_0328 --criar      # cria sem abrir a janela
     python3 src/anotar.py tile_0053 --refazer  # recria o JSON do algoritmo e abre
 
 Controles:
@@ -28,10 +32,12 @@ Controles:
     clique direito           remove a caixa faltante sob o cursor
     u                        desfaz a última faltante
     s                        salva (marca revisado) e fecha
+    n                        pula o tile atual sem salvar
     q / ESC                  encerra sem salvar
 """
 
 import argparse
+import datetime as _dt
 import json
 import os
 import shutil
@@ -63,6 +69,93 @@ def resolver_imagem(ref: str) -> str:
             return p
     print(f"[ERRO] imagem não encontrada para '{ref}'.")
     sys.exit(1)
+
+
+def listar_jsons(alvo: str) -> list[str]:
+    """Lista JSONs de revisão a partir de um arquivo, diretório ou tile."""
+    if os.path.isfile(alvo) and alvo.lower().endswith(".json"):
+        return [alvo]
+    if os.path.isdir(alvo):
+        encontrados: list[str] = []
+        for raiz, _, arquivos in os.walk(alvo):
+            for nome in arquivos:
+                if nome.lower().endswith(".json"):
+                    encontrados.append(os.path.join(raiz, nome))
+        return sorted(encontrados)
+
+    img_path = resolver_imagem(alvo)
+    base = os.path.splitext(os.path.basename(img_path))[0]
+    json_path = os.path.join(VALIDACAO_DIR, base, base + ".json")
+    return [json_path]
+
+
+def listar_imagens_validacao(alvo: str) -> list[str]:
+    """Lista imagens em pastas de validação, ignorando overlays `_vis`."""
+    imagens: list[str] = []
+    for raiz, _, arquivos in os.walk(alvo):
+        for nome in arquivos:
+            stem, ext = os.path.splitext(nome)
+            if ext.lower() in EXTS and not stem.endswith("_vis"):
+                imagens.append(os.path.join(raiz, nome))
+    return sorted(imagens)
+
+
+def carregar_json(json_path: str) -> dict[str, Any]:
+    with open(json_path, encoding="utf-8") as f:
+        return json.load(f)
+
+
+def filtrar_pendentes(jsons: list[str]) -> list[str]:
+    pendentes = []
+    for json_path in jsons:
+        try:
+            meta = carregar_json(json_path)
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not meta.get("revisado", False):
+            pendentes.append(json_path)
+    return pendentes
+
+
+def imprimir_resumo(jsons: list[str]) -> None:
+    total = revisados = deteccoes = falsos = faltantes = 0
+    det_revisadas = falsos_revisados = faltantes_revisados = 0
+    for json_path in jsons:
+        try:
+            meta = carregar_json(json_path)
+        except (OSError, json.JSONDecodeError):
+            print(f"[AVISO] ignorando JSON inválido: {json_path}")
+            continue
+        total += 1
+        revisados += int(bool(meta.get("revisado", False)))
+        n_det = len(meta.get("embaubas", []))
+        n_fp = len(meta.get("falsos_positivos", []))
+        n_fn = len(meta.get("faltantes", []))
+        deteccoes += n_det
+        falsos += n_fp
+        faltantes += n_fn
+        if meta.get("revisado", False):
+            det_revisadas += n_det
+            falsos_revisados += n_fp
+            faltantes_revisados += n_fn
+
+    tp = det_revisadas - falsos_revisados
+    pendentes = total - revisados
+    precisao = tp / det_revisadas if det_revisadas else 0.0
+    recall = tp / (tp + faltantes_revisados) if (tp + faltantes_revisados) else 0.0
+    f1 = 2 * precisao * recall / (precisao + recall) if (precisao + recall) else 0.0
+
+    print(f"JSONs: {total}")
+    print(f"Revisados: {revisados}")
+    print(f"Pendentes: {pendentes}")
+    print(f"Detecções totais: {deteccoes}")
+    print(f"Detecções revisadas: {det_revisadas}")
+    print(f"Falsos positivos revisados: {falsos_revisados}")
+    print(f"Faltantes revisados: {faltantes_revisados}")
+    print(f"TP revisado: {tp}")
+    print(f"Precisão revisada: {precisao:.3f}")
+    print(f"Recall revisado: {recall:.3f}")
+    print(f"F1 revisado: {f1:.3f}")
 
 
 def adicionar_revisao(caminho_img: str) -> str:
@@ -124,10 +217,9 @@ def salvar(json_path: str, meta: dict[str, Any], fp: set[int], faltantes: list[l
         salvar_overlay(img, json_path, meta)
 
 
-def anotar(json_path: str) -> str:
+def anotar(json_path: str, progresso: str = "") -> str:
     """Abre a janela de anotação para o tile do JSON dado."""
-    with open(json_path, encoding="utf-8") as f:
-        meta = json.load(f)
+    meta = carregar_json(json_path)
     img = cv2.imread(os.path.join(os.path.dirname(json_path), meta["tile"]))
     assert img is not None, f"imagem do tile não encontrada: {meta['tile']}"
     altura, largura = img.shape[:2]
@@ -158,9 +250,10 @@ def anotar(json_path: str) -> str:
             cv2.rectangle(vis, (x0, y0), (x1, y1), AMARELO, 1)
         tp = len(deteccoes) - len(estado["fp"])
         rev = "rev" if meta.get("revisado", False) else "novo"
-        ajuda = (f"{rev}  embauba:{tp}  falso+:{len(estado['fp'])}  "
+        prefixo = f"{progresso}  " if progresso else ""
+        ajuda = (f"{prefixo}{rev}  embauba:{tp}  falso+:{len(estado['fp'])}  "
                  f"faltantes:{len(estado['faltantes'])}   "
-                 "[clique]=falso+  [arrasta]=faltante  [dir]=remove  u s q")
+                 "[clique]=falso+  [arrasta]=faltante  [dir]=remove  u s n q")
         cv2.rectangle(vis, (0, 0), (vis.shape[1], 22), (0, 0, 0), -1)
         cv2.putText(vis, ajuda, (6, 16), FONT, 0.42, (255, 255, 255), 1)
         cv2.imshow(win, vis)
@@ -200,6 +293,9 @@ def anotar(json_path: str) -> str:
         if k in (ord("q"), 27):
             cv2.destroyAllWindows()
             return "sair"
+        if k == ord("n"):
+            cv2.destroyAllWindows()
+            return "pular"
         if k == ord("u") and estado["faltantes"]:
             estado["faltantes"].pop(); desenhar()
         if k == ord("s"):
@@ -210,23 +306,96 @@ def anotar(json_path: str) -> str:
             return "salvo"
 
 
-if __name__ == "__main__":
-    ap = argparse.ArgumentParser(description="Adiciona e anota um tile na revisão de validação.")
-    ap.add_argument("alvo", help="nome do tile (ex.: tile_0053) ou caminho de imagem")
-    ap.add_argument("--refazer", action="store_true",
-                    help="recria o JSON a partir do algoritmo (descarta anotações) antes de abrir")
-    args = ap.parse_args()
-
-    img_path = resolver_imagem(args.alvo)
+def preparar_json(alvo: str, refazer: bool) -> str:
+    img_path = resolver_imagem(alvo)
     base = os.path.splitext(os.path.basename(img_path))[0]
     json_path = os.path.join(VALIDACAO_DIR, base, base + ".json")
 
-    precisa_criar = args.refazer or not os.path.exists(json_path)
+    precisa_criar = refazer or not os.path.exists(json_path)
     if not precisa_criar:
-        with open(json_path, encoding="utf-8") as f:
-            if "embaubas" not in json.load(f):  # JSON em esquema antigo
-                print(f"[INFO] '{json_path}' está no esquema antigo; recriando pelo algoritmo.")
-                precisa_criar = True
+        meta = carregar_json(json_path)
+        if "embaubas" not in meta:  # JSON em esquema antigo
+            print(f"[INFO] '{json_path}' está no esquema antigo; recriando pelo algoritmo.")
+            precisa_criar = True
     if precisa_criar:
         json_path = adicionar_revisao(img_path)
-    anotar(json_path)
+    return json_path
+
+
+def criar_backup_validacao() -> str:
+    ts = _dt.datetime.now().strftime("%Y%m%d_%H%M%S")
+    destino = os.path.join(_ROOT, "data", f"validacao_backup_{ts}")
+    shutil.copytree(VALIDACAO_DIR, destino)
+    return destino
+
+
+def refazer_todos(alvo: str) -> None:
+    if not os.path.isdir(alvo):
+        print("[ERRO] --refazer-todos precisa receber uma pasta de validação.")
+        sys.exit(1)
+
+    imagens = listar_imagens_validacao(alvo)
+    if not imagens:
+        print(f"[ERRO] nenhuma imagem encontrada em '{alvo}'.")
+        sys.exit(1)
+
+    backup = criar_backup_validacao()
+    print(f"[OK] backup criado: {backup}")
+    print(f"[INFO] recriando {len(imagens)} revisões...")
+
+    for i, img_path in enumerate(imagens, start=1):
+        print(f"[INFO] {i}/{len(imagens)} {os.path.basename(img_path)}")
+        adicionar_revisao(img_path)
+
+    print("[OK] revisões recriadas. Use `python3 src/anotar.py data/validacao --pendentes`.")
+
+
+def revisar_sequencia(jsons: list[str]) -> None:
+    total = len(jsons)
+    if total == 0:
+        print("[OK] nenhum tile para revisar.")
+        return
+
+    for i, json_path in enumerate(jsons, start=1):
+        print(f"[INFO] abrindo {i}/{total}: {json_path}")
+        resultado = anotar(json_path, f"{i}/{total}")
+        if resultado == "sair":
+            print("[INFO] sessão encerrada.")
+            break
+
+
+if __name__ == "__main__":
+    ap = argparse.ArgumentParser(description="Adiciona e anota um tile na revisão de validação.")
+    ap.add_argument("alvo", help="nome do tile, caminho de imagem, JSON ou pasta de validação")
+    ap.add_argument("--refazer", action="store_true",
+                    help="recria o JSON a partir do algoritmo (descarta anotações) antes de abrir")
+    ap.add_argument("--criar", action="store_true",
+                    help="cria ou atualiza o JSON/overlay e não abre a interface")
+    ap.add_argument("--pendentes", action="store_true",
+                    help="abre em sequência apenas JSONs ainda não revisados")
+    ap.add_argument("--resumo", action="store_true",
+                    help="mostra resumo das revisões e não abre a interface")
+    ap.add_argument("--refazer-todos", action="store_true",
+                    help="faz backup e recria todos os JSONs/overlays da pasta de validação")
+    args = ap.parse_args()
+
+    if args.refazer_todos:
+        refazer_todos(args.alvo)
+        sys.exit(0)
+
+    if os.path.isdir(args.alvo) or (os.path.isfile(args.alvo) and args.alvo.lower().endswith(".json")):
+        jsons = listar_jsons(args.alvo)
+        if args.pendentes:
+            jsons = filtrar_pendentes(jsons)
+        if args.resumo:
+            imprimir_resumo(jsons)
+        else:
+            revisar_sequencia(jsons)
+    else:
+        json_path = preparar_json(args.alvo, args.refazer)
+        if args.resumo:
+            imprimir_resumo([json_path])
+        elif args.criar:
+            print(f"[OK] revisão pronta: {json_path}")
+        else:
+            anotar(json_path)

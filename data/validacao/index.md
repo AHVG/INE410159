@@ -5,10 +5,17 @@ comparações futuras no relatório.
 
 ## Origem
 
-As anotações vêm de 153 candidatos produzidos pelo pipeline base (HSV +
-morfologia + `área > 10.000 px²`) em 18 tiles. Cada candidato foi rotulado como
-`embauba` ou `lixo`. A pasta também aceita caixas em `faltantes`, que representam
-embaúbas visíveis no tile mas não detectadas pelo pipeline base.
+As anotações vêm de 35 tiles selecionados para cobrir casos com muitas, poucas e
+nenhuma detecção automática. Cada detecção do pipeline é revisada como embaúba
+válida ou falso positivo. A pasta também aceita caixas em `faltantes`, que
+representam embaúbas visíveis no tile mas não detectadas pelo pipeline base.
+
+Estado atual:
+
+- 35 JSONs revisados.
+- 146 detecções avaliadas.
+- 126 verdadeiros positivos, 20 falsos positivos e 50 faltantes.
+- Precisão 86,3%, recall 71,6% e F1 78,3%.
 
 ## Estrutura
 
@@ -62,8 +69,10 @@ data/validacao/
 python3 src/anotar.py tile_0905
 python3 src/anotar.py data/validacao/tile_0905/tile_0905.json
 python3 src/anotar.py caminho/nova_imagem.jpg
+python3 src/anotar.py tile_0328 --criar
 python3 src/anotar.py data/validacao --pendentes
 python3 src/anotar.py data/validacao --resumo
+python3 src/anotar.py data/validacao --refazer-todos
 ```
 
 Quando o alvo é uma imagem que ainda não tem JSON, o `anotar.py` cria
@@ -86,4 +95,5 @@ Controles:
 
 Para o relatório, revise todos os tiles com `--pendentes`. Quando todos estiverem
 com `revisado: true`, os labels e as caixas em `faltantes` formam uma referência
-consistente para comparações futuras.
+consistente para comparações futuras. O resumo calcula precisão, recall e F1
+apenas sobre tiles já revisados.

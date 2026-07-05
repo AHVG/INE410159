@@ -1,0 +1,12 @@
+{
+  "tile": "tile_0757.jpg",
+  "revisado": true,
+  "embaubas": [],
+  "n_candidatos": 2,
+  "n_deteccoes": 0,
+  "coverage_pct": 2.685856819152832,
+  "tempo_s": 0.20451855659484863,
+  "memoria_mb": 64.0678768157959,
+  "falsos_positivos": [],
+  "faltantes": []
+}

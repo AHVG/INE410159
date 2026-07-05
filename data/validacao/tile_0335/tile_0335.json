@@ -1,0 +1,12 @@
+{
+  "tile": "tile_0335.jpg",
+  "revisado": true,
+  "embaubas": [],
+  "n_candidatos": 4,
+  "n_deteccoes": 0,
+  "coverage_pct": 3.8991451263427734,
+  "tempo_s": 0.060074567794799805,
+  "memoria_mb": 64.06624794006348,
+  "falsos_positivos": [],
+  "faltantes": []
+}
