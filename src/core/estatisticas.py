@@ -366,7 +366,6 @@ pipeline simples, interpretável e executável com poucos recursos.
 | Parâmetro | Valor |
 |-----------|-------|
 | Tiles | 992 imagens JPEG de 2048×2048 px |
-| Sobreposição | 512 px (25%) |
 | CRS | EPSG:31982 (UTM 22S) |
 | Resolução | {pixel_size:.6f} u/px |
 | Tamanho aproximado em disco (`data/tiles`) | {tamanho_tiles} |

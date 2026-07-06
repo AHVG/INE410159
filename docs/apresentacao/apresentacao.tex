@@ -79,9 +79,9 @@
 \title[Detecção de Embaúba]{Detecção e Segmentação de Copas de \textit{Cecropia} (Embaúba) em Ortomosaico de VANT}
 \subtitle{Duas abordagens: Visão Computacional Clássica e Redes Neurais (SAM 3 + YOLOv8)}
 \author[Grupo 10]{\texorpdfstring{Grupo 10\\
-\small Gabriel Arantes F. Gualda · Fábio H. A. Coelho · Nena A. Impanta\\
-\small Augusto de H. V. Guerner · Eduardo G. de Lazari}{Grupo 10}}
-\institute{INE5443 — Reconhecimento de Padrões \\ UFSC}
+\small Augusto de H. V. Guerner · Eduardo G. de Lazari · Fábio H. A. Coelho\\
+\small Gabriel Arantes F. Gualda · Nena A. Impanta}{Grupo 10}}
+\institute{INE410159 — Visão Computacional \\ UFSC}
 \date{Julho de 2026}
 \hypersetup{
     pdftitle={Detecção e Segmentação de Copas de Cecropia em Ortomosaico de VANT},
@@ -111,11 +111,11 @@
         {\Large\color{Bark}\bfseries Grupo 10}
 
         \vspace{0.25cm}
-        {\small Gabriel Arantes F. Gualda · Fábio H. A. Coelho · Nena A. Impanta}\\
-        {\small Augusto de H. V. Guerner · Eduardo G. de Lazari}
+        {\small Augusto de H. V. Guerner · Eduardo G. de Lazari · Fábio H. A. Coelho}\\
+        {\small Gabriel Arantes F. Gualda · Nena A. Impanta}
 
         \vspace{0.55cm}
-        {\small INE5443 — Reconhecimento de Padrões}\\
+        {\small INE410159 — Visão Computacional}\\
         {\small UFSC · Julho de 2026}
     \end{center}
 \end{frame}
@@ -177,10 +177,10 @@
             Tiles & 992 JPEGs de 2048 $\times$ 2048 px \\
             CRS & EPSG:31982 (UTM Zona 22S) \\
             Resolução espacial & $\approx$ 0,00848 u/px \\
-            Tamanho em disco & 899,0 MB \\
-            Tiles pretos ignorados & 229 \\
-            Tiles processados & 361 \\
-            Validação manual & 35 tiles revisados \\
+            Tamanho em disco & 1,4 GB \\
+            Tiles pretos ignorados & 402 \\
+            Tiles processados & 590 \\
+            Validação manual & 50 tiles revisados \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -198,7 +198,7 @@
 
 \begin{frame}{Visão Geral do Pipeline}
     \centering
-    \includegraphics[height=0.80\textheight]{../../data/output/pipeline_exemplo_filtro_classico.png}
+    \includegraphics[height=0.82\textheight]{../../data/output/tiles/tile_0681/grid.png}
 \end{frame}
 
 \begin{frame}{Etapas do Pipeline}
@@ -246,16 +246,16 @@
             \toprule
             \textbf{Métrica} & \textbf{Valor} \\
             \midrule
-            Tiles processados & 361 \\
-            Tiles com detecção & 311 (86,1\%) \\
-            Total de detecções & 1.218 \\
-            Detecções por tile & $3{,}37 \pm 2{,}78$ \\
-            Área total estimada & 8.365,61 u² \\
-            Área média por região & 95.522 px² \\
-            Área máxima por região & 599.406 px² \\
-            Cobertura HSV média & 14,891\% \\
-            Tempo total & 89,0 s \\
-            Tempo médio por tile & $151{,}9 \pm 57{,}3$ ms \\
+            Tiles processados & 590 \\
+            Tiles com detecção & 507 (85,9\%) \\
+            Total de detecções & 2.003 \\
+            Detecções por tile & $3{,}39 \pm 2{,}69$ \\
+            Área total estimada & 13.164,42 m² \\
+            Área média por região & 91.406 px² ($\approx$ 6,57 m²) \\
+            Área máxima por região & 599.406 px² ($\approx$ 43,10 m²) \\
+            Cobertura HSV média & 13,862\% \\
+            Tempo total & 215,6 s \\
+            Tempo médio por tile & $400{,}8 \pm 163{,}6$ ms \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -298,14 +298,14 @@
             \toprule
             \textbf{Métrica} & \textbf{Valor} \\
             \midrule
-            Tiles revisados & 35/35 \\
-            Detecções avaliadas & 146 \\
-            Verdadeiros positivos (TP) & 126 \\
-            Falsos positivos (FP) & 20 \\
-            Falsos negativos / faltantes (FN) & 50 \\
-            Precisão & 86,3\% \\
-            Recall & 71,6\% \\
-            F1 & 78,3\% \\
+            Tiles revisados & 50/50 \\
+            Detecções avaliadas & 207 \\
+            Verdadeiros positivos (TP) & 179 \\
+            Falsos positivos (FP) & 28 \\
+            Falsos negativos / faltantes (FN) & 79 \\
+            Precisão & 86,5\% \\
+            Recall & 69,4\% \\
+            F1 & 77,0\% \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -337,7 +337,7 @@
     \end{columns}
 
     \vspace{0.8em}
-    \small Tempo médio de 151,9 ms/tile e memória próxima de 64 MB/tile.
+    \small Tempo médio de 400,8 ms/tile e memória próxima de 64 MB/tile.
 \end{frame}
 
 \begin{frame}{Limitações da Abordagem Clássica}
@@ -493,10 +493,10 @@
             Sinal & Cor + forma & Padrões aprendidos \\
             Anotação & Não requer & Curadoria por exclusão \\
             Interpretabilidade & Alta & Baixa \\
-            Custo & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU, 500 épocas) \\
+            Custo & Baixo ($\sim$400 ms/tile, CPU) & Alto (GPU, 500 épocas) \\
             Segmentação & Fecho convexo & Máscara SAM 3 \\
             Discriminação & Fraca (espectral) & Potencialmente alta \\
-            Resultado & P 86,3 / R 71,6 / F1 78,3 & 1.226 mapeadas; 54,3\% global \\
+            Resultado & P 86,5 / R 69,4 / F1 77,0 & 1.226 mapeadas; 54,3\% global \\
             \bottomrule
         \end{tabular}
     \end{table}
@@ -507,7 +507,7 @@
 \begin{frame}{Conclusões e Trabalhos Futuros}
     \begin{itemize}
         \item O pipeline \textbf{clássico} é rápido, interpretável e adequado a uma
-        primeira estimativa espacial: 1.218 regiões, 86,3\% de precisão, 71,6\% de recall.
+        primeira estimativa espacial: 2.003 regiões, 86,5\% de precisão, 69,4\% de recall.
         \item O pipeline \textbf{neural} reduz a anotação via SAM 3 e evita vazamento com
         divisão espacial; mapeou 1.226 indivíduos e segmentou 1.228 copas.
         \item \textbf{Próximos passos (clássica)}: refinar HSV, consolidar detecções entre

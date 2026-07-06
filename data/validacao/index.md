@@ -5,17 +5,17 @@ comparações futuras no relatório.
 
 ## Origem
 
-As anotações vêm de 35 tiles selecionados para cobrir casos com muitas, poucas e
+As anotações vêm de 50 tiles selecionados para cobrir casos com muitas, poucas e
 nenhuma detecção automática. Cada detecção do pipeline é revisada como embaúba
 válida ou falso positivo. A pasta também aceita caixas em `faltantes`, que
 representam embaúbas visíveis no tile mas não detectadas pelo pipeline base.
 
 Estado atual:
 
-- 35 imagens validadas.
-- 146 detecções avaliadas.
-- 126 verdadeiros positivos, 20 falsos positivos e 50 faltantes.
-- Precisão 86,3%, recall 71,6% e F1 78,3%.
+- 50 imagens validadas.
+- 207 detecções avaliadas.
+- 179 verdadeiros positivos, 28 falsos positivos e 79 faltantes.
+- Precisão 86,5%, recall 69,4% e F1 77,0%.
 
 ## Estrutura
 

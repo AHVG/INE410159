@@ -15,6 +15,14 @@
 \usepackage{listings}
 \usepackage{parskip}
 \usepackage{array}
+\usepackage{titlesec}
+
+% Título de \part em uma linha só ("Parte N - Título"), tudo no tamanho \huge do
+% título (o rótulo "Parte N" deixa de ser menor que o título).
+\titleformat{\part}[block]
+  {\normalfont\huge\bfseries\raggedright}
+  {\partname~\thepart\ -}{0.5em}{}
+\titlespacing*{\part}{0pt}{3.5ex plus 1ex minus .2ex}{2.5ex plus .2ex}
 
 \geometry{margin=2.5cm}
 
@@ -43,11 +51,11 @@
     (Embaúba) em Ortomosaico de VANT}\\[0.4em]
     \large Duas abordagens: Visão Computacional Clássica e
     Redes Neurais (SAM 3 + YOLOv8)\\[0.6em]
-    \large INE5443 — Reconhecimento de Padrões \\ UFSC
+    \large INE410159 — Visão Computacional \\ UFSC
 }
 \author{Grupo 10 \\[0.3em]
-\small Gabriel Arantes F. Gualda \quad Fábio H. A. Coelho \quad Nena A. Impanta\\
-\small Augusto de H. V. Guerner \quad Eduardo G. de Lazari}
+\small Augusto de H. V. Guerner \quad Eduardo G. de Lazari \quad Fábio H. A. Coelho\\
+\small Gabriel Arantes F. Gualda \quad Nena A. Impanta}
 \date{Julho de 2026}
 % ─────────────────────────────────────────────────────────────────────────────
 
@@ -207,7 +215,6 @@ resume as características desse recorte.
 \midrule
 Total de tiles & 992 \\
 Resolução por tile & 2048 $\times$ 2048 px \\
-Sobreposição entre tiles & 512 px (25\%) \\
 Sistema de referência (CRS) & EPSG:31982 (UTM Zona 22S) \\
 Resolução espacial & $\approx$ 0,00848 u/px \\
 Tamanho aproximado em disco (\texttt{data/tiles}) & 1,4 GB \\
@@ -223,7 +230,7 @@ intensidade média da imagem.
 
 O conjunto de validação fica em \texttt{data/validacao/}, com uma subpasta por
 imagem revisada (\texttt{<nome>.jpg}, \texttt{<nome>.json},
-\texttt{<nome>\_vis.png}). Atualmente há 35 JSONs de validação, todos revisados
+\texttt{<nome>\_vis.png}). Atualmente há 50 JSONs de validação, todos revisados
 manualmente. Cada JSON armazena a saída do detector em \texttt{embaubas}, os
 índices marcados como falso positivo em \texttt{falsos\_positivos} e caixas
 \texttt{faltantes} para copas visíveis que não foram detectadas.
@@ -280,8 +287,24 @@ filtro preserva a estrutura geral das copas, mas atenua detalhes muito pequenos.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/3_canal_h.png}
-    \caption{Canal H extraído após a conversão para HSV.}
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../../data/output/tiles/tile_0681/3_canal_h.png}
+        \caption{Canal H (matiz).}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../../data/output/tiles/tile_0681/4_canal_s.png}
+        \caption{Canal S (saturação).}
+    \end{subfigure}
+    \hfill
+    \begin{subfigure}[b]{0.32\textwidth}
+        \centering
+        \includegraphics[width=\textwidth]{../../data/output/tiles/tile_0681/5_canal_v.png}
+        \caption{Canal V (brilho).}
+    \end{subfigure}
+    \caption{Canais H, S e V extraídos após a conversão para HSV.}
     \label{fig:etapa-hsv}
 \end{figure}
 
@@ -373,46 +396,33 @@ usando \texttt{RETR\_EXTERNAL} e \texttt{CHAIN\_APPROX\_SIMPLE}. Essa escolha
 privilegia os blobs principais da segmentação e reduz a complexidade dos
 contornos sem afetar a área estimada.
 
-\subsection{Etapa 7 - Filtragem por Área Mínima}
+\subsection{Etapa 7 - Filtragem de Contornos (Área e Forma)}
 
 \begin{figure}[H]
     \centering
     \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/9_filtro_forma_tamanho.png}
-    \caption{Candidatos remanescentes após descarte de regiões pequenas.}
-    \label{fig:etapa-area}
-\end{figure}
-
-\textbf{Motivação.} Regiões muito pequenas tendem a ser ruído, bordas de outras
-plantas ou pequenos agrupamentos de folhas, não copas completas. O filtro de
-área mínima reduz esses falsos candidatos antes da regra final.
-
-Contornos com área inferior a $10.000\;\text{px}^2$ são descartados. Esse
-threshold elimina manchas pequenas e ruído residual que ainda sobreviveram às
-etapas morfológicas, mantendo apenas regiões compatíveis com copas.
-
-\subsection{Etapa 8 - Filtro Final de Embaúba}
-
-\begin{figure}[H]
-    \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/9_filtro_forma_tamanho.png}
-    \caption{Resultado final depois dos filtros de tamanho, circularidade e solidez.}
+    \caption{Candidatos após a filtragem por área mínima e pela regra final de
+             forma e tamanho.}
     \label{fig:etapa-filtro-final}
 \end{figure}
 
-\textbf{Motivação.} A segmentação por cor é propositalmente permissiva. O filtro
-final usa forma e tamanho para rejeitar parte dos falsos positivos, como centros
-de palmeiras e blobs fundidos grandes demais, mantendo regiões mais plausíveis
-como embaúba.
+\textbf{Motivação.} A segmentação por cor é propositalmente permissiva, então
+esta etapa reúne dois critérios geométricos que separam copa de ruído. Primeiro,
+um limiar de área mínima descarta regiões muito pequenas — ruído, bordas de
+outras plantas ou pequenos agrupamentos de folhas. Em seguida, uma regra de
+forma e tamanho rejeita parte dos falsos positivos que sobreviveram, como centros
+de palmeiras e blobs fundidos grandes demais.
 
-Sobre os candidatos restantes, aplica-se uma regra geométrica final: um contorno
-é aceito como embaúba quando sua área é maior ou igual a $33.798\;\text{px}^2$
-ou sua circularidade é menor ou igual a $0,1551$, desde que a área não ultrapasse
-$600.000\;\text{px}^2$ e a solidez seja pelo menos $0,48$. A primeira condição
-favorece copas grandes; a segunda captura formas menos circulares; o teto de
-área remove blobs fundidos gigantes; e a solidez evita regiões excessivamente
-fragmentadas.
+Contornos com área inferior a $10.000\;\text{px}^2$ são descartados, eliminando
+manchas pequenas e ruído residual das etapas morfológicas. Sobre os candidatos
+restantes aplica-se a regra final: um contorno é aceito como embaúba quando sua
+área é maior ou igual a $33.798\;\text{px}^2$ ou sua circularidade é menor ou
+igual a $0,1551$, desde que a área não ultrapasse $600.000\;\text{px}^2$ e a
+solidez seja pelo menos $0,48$. A primeira condição favorece copas grandes; a
+segunda captura formas menos circulares; o teto de área remove blobs fundidos
+gigantes; e a solidez evita regiões excessivamente fragmentadas.
 
-\subsection{Etapa 9 - Convex Hull}
+\subsection{Etapa 8 - Convex Hull}
 
 \begin{figure}[H]
     \centering
@@ -452,8 +462,8 @@ Tiles com $\geq 1$ detecção & 507 (85,9\%) \\
 Total de detecções & 2.003 \\
 Detecções por tile & $3{,}39 \pm 2{,}69$ \\
 Área total estimada & 13.164,42 u² \\
-Área média por região & 91.406 px² \\
-Área máxima por região & 599.406 px² \\
+Área média por região & 91.406 px² ($\approx$ 6,57 m²) \\
+Área máxima por região & 599.406 px² ($\approx$ 43,10 m²) \\
 Cobertura HSV média & 13,862\% \\
 Tempo total & 208,0 s \\
 Tempo médio por tile & $436{,}2 \pm 164{,}7$ ms \\
@@ -539,7 +549,7 @@ tile\_0175.jpg & 10 &   699.474 & 50,29 & 16,76\% \\
 
 \subsection{Validação Manual}
 
-A validação compara a saída final do detector com a revisão manual de 35 tiles.
+A validação compara a saída final do detector com a revisão manual de 50 tiles.
 Em cada JSON revisado, as detecções confirmadas contam como verdadeiros
 positivos, os índices marcados em \texttt{falsos\_positivos} contam como falsos
 positivos e as caixas \texttt{faltantes} contam como falsos negativos.
@@ -552,23 +562,22 @@ positivos e as caixas \texttt{faltantes} contam como falsos negativos.
 \toprule
 \textbf{Métrica} & \textbf{Valor} \\
 \midrule
-Tiles revisados & 35/35 \\
-Detecções avaliadas & 146 \\
-Verdadeiros positivos (TP) & 124 \\
-Falsos positivos (FP) & 22 \\
-Falsos negativos / faltantes (FN) & 50 \\
-Precisão & 84,9\% \\
-Recall & 71,3\% \\
-F1 & 77,5\% \\
+Tiles revisados & 50/50 \\
+Detecções avaliadas & 207 \\
+Verdadeiros positivos (TP) & 179 \\
+Falsos positivos (FP) & 28 \\
+Falsos negativos / faltantes (FN) & 79 \\
+Precisão & 86,5\% \\
+Recall & 69,4\% \\
+F1 & 77,0\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A precisão de 84,9\% indica que a maior parte das regiões detectadas corresponde
-a embaúba na amostra revisada. O recall de 71,3\% melhorou com a ampliação da
-amostra, mas ainda mostra que o método perde copas reais, principalmente quando a
-segmentação HSV não produz um candidato inicial ou quando a copa aparece com
-iluminação e cor fora da faixa definida.
+A precisão de 86,5\% indica que a maior parte das regiões detectadas corresponde
+a embaúba. O recall de 69,4\% mostra que o método ainda perde copas reais,
+principalmente quando a segmentação HSV não produz um candidato inicial ou quando
+a copa aparece com iluminação e cor fora da faixa definida.
 
 \begin{figure}[H]
     \centering
@@ -641,7 +650,7 @@ As causas raízes são:
 
 \subsection{Regiões de área muito grande}
 
-A área máxima atual foi limitada a 599.406 px² pelo teto de
+A área máxima atual foi limitada a 599.406 px² ($\approx$ 43,10 m²) pelo teto de
 $600.000\;\text{px}^2$ no filtro final. Esse teto remove os maiores blobs
 fundidos que apareciam em versões anteriores do pipeline, mas ainda permite
 regiões grandes o suficiente para representar copas extensas ou agrupamentos
@@ -650,10 +659,10 @@ limiar de área máxima reduz agregações incompatíveis com uma copa individua
 
 \subsection{Leitura da Validação}
 
-A validação final mostra 124 verdadeiros positivos, 22 falsos positivos e 50
-falsos negativos em 35 tiles revisados. A precisão de 84,9\% indica que o filtro final de tamanho,
-circularidade e solidez reduziu bem os falsos positivos na amostra revisada. O
-recall de 71,3\%, por outro lado, mostra que parte das copas reais ainda não entra
+A validação final mostra 179 verdadeiros positivos, 28 falsos positivos e 79
+falsos negativos em 50 tiles revisados. A precisão de 86,5\% indica que o filtro final de tamanho,
+circularidade e solidez reduziu bem os falsos positivos. O
+recall de 69,4\%, por outro lado, mostra que parte das copas reais ainda não entra
 na saída final, principalmente por dependerem de uma faixa HSV fixa.
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -669,18 +678,11 @@ que costuma ser a etapa mais custosa em abordagens supervisionadas.
 
 \section{Metodologia da Abordagem Neural}
 
-A metodologia proposta é composta por seis etapas sequenciais (Figura~\ref{fig:fluxo-dl}):
+A metodologia proposta é composta por seis etapas sequenciais:
 (1) geração do dataset com SAM 3 \textit{text prompt}, (2) divisão espacial do
 dataset, (3) correção semi-automatizada das anotações, (4) treinamento do YOLOv8x,
 (5) inferência e pós-processamento e (6) segmentação das copas com SAM 3 por
 \textit{prompt} geométrico.
-
-\begin{figure}[H]
-    \centering
-    \pendente{Figura --- Fluxograma geral do pipeline semi-automatizado com as seis etapas.}
-    \caption{Fluxograma geral do pipeline semi-automatizado (SAM 3 + YOLOv8).}
-    \label{fig:fluxo-dl}
-\end{figure}
 
 \subsection{Contexto: SAM 3 e curadoria por exclusão}
 
@@ -770,14 +772,7 @@ teste, e cada detecção foi comparada às anotações existentes por Intersecç
 União (IoU). Detecções com IoU inferior a 0,5 em relação a qualquer anotação foram
 consideradas potenciais indivíduos não anotados. Para cada imagem, foi gerada uma
 visualização com as anotações existentes em verde e as detecções sem correspondência
-em vermelho (Figura~\ref{fig:correcao-dl}), permitindo ao operador avaliar cada caso.
-
-\begin{figure}[H]
-    \centering
-    \pendente{Figura --- Imagem de teste com anotações existentes (verde) e detecções sem correspondência (vermelho).}
-    \caption{Procedimento semi-automatizado de complementação de anotações.}
-    \label{fig:correcao-dl}
-\end{figure}
+em vermelho, permitindo ao operador avaliar cada caso.
 
 No conjunto de teste, das 163 detecções sem correspondência, 157 foram confirmadas
 como cecropias genuínas e apenas 6 descartadas como falsos positivos. No conjunto
@@ -1114,14 +1109,14 @@ Interpretabilidade & Alta: cada etapa é auditável & Baixa: decisão distribuí
 Custo computacional & Baixo ($\sim$436 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
 Segmentação de copa & Fecho convexo aproximado & Máscara do SAM 3 (polígono refinado) \\
 Discriminação de espécie & Fraca (confusão espectral) & Potencialmente alta (aprende contexto) \\
-Resultado & P 84,9\% / R 71,3\% / F1 77,5\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
+Resultado & P 86,5\% / R 69,4\% / F1 77,0\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 A abordagem clássica é leve, transparente e não exige anotação, mas esbarra na
 confusão espectral: como diversas espécies caem na mesma faixa de verde, o recall
-fica limitado (71,3\%) e há fusão de copas próximas. A abordagem neural procura
+fica limitado (69,4\%) e há fusão de copas próximas. A abordagem neural procura
 justamente superar essa limitação, aprendendo padrões visuais que vão além da cor e
 delegando a segmentação fina ao SAM 3. Em contrapartida, exige infraestrutura de
 GPU, um ciclo de treinamento longo e uma etapa (ainda que reduzida) de curadoria.
@@ -1143,7 +1138,7 @@ A \textbf{abordagem clássica} (Parte I) demonstrou ser viável para uma primeir
 estimativa da distribuição espacial da espécie: é eficiente, escalável por
 paralelismo e produz resultados interpretáveis pelas visualizações passo a passo.
 Foram detectadas 2.003 regiões em 590 tiles válidos, e a validação manual atingiu
-84,9\% de precisão e 71,3\% de recall. O filtro final reduz fortemente os falsos
+86,5\% de precisão e 69,4\% de recall. O filtro final reduz fortemente os falsos
 positivos, mas o recall limitado revela que a dependência de uma faixa HSV fixa
 deixa escapar copas reais.
 
@@ -1170,5 +1165,31 @@ maior desafio por densidade e proximidade entre copas.
     neural como refinamento, ou comparar as duas saídas para estimar incerteza no
     mapeamento final.
 \end{enumerate}
+
+\section{Declaração de Uso de Inteligência Artificial}
+
+O uso de inteligência artificial neste trabalho ocorreu em duas frentes distintas.
+
+\textbf{IA como método (Parte II).} A abordagem neural é construída sobre dois
+modelos:
+
+\begin{itemize}
+    \item \textbf{SAM 3} (Meta AI): geração do dataset por \textit{prompt} textual
+    (``tree'') e segmentação final das copas por \textit{prompt} geométrico
+    (\textit{bounding box}).
+    \item \textbf{YOLOv8x} (Ultralytics): detecção e localização dos indivíduos de
+    \textit{Cecropia}.
+\end{itemize}
+
+A otimização dos hiperparâmetros do YOLOv8x usou o \textit{framework} Optuna
+(amostrador TPE) e a análise de importância das variáveis, um regressor
+\textit{Random Forest}.
+
+\textbf{IA como assistente de desenvolvimento.} O assistente \textbf{Claude}
+(Anthropic), por meio do Claude Code, foi utilizado no desenvolvimento do projeto
+para refatorar e organizar o código do pipeline clássico, gerar as figuras de
+passo a passo e de estatísticas e redigir e revisar o texto deste relatório e dos
+slides. Todas as saídas geradas com auxílio de IA foram revisadas e validadas
+pelos autores, que mantêm a responsabilidade final pelo conteúdo.
 
 \end{document}

@@ -185,12 +185,12 @@ def _preparar_painel(img: np.ndarray, titulo: str, cmap: str | None) -> np.ndarr
         vis = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
 
     tamanho = 640
-    faixa_titulo = 58
+    faixa_titulo = 42
     vis = cv2.resize(vis, (tamanho, tamanho), interpolation=cv2.INTER_AREA)
     painel = np.full((tamanho + faixa_titulo, tamanho, 3), 255, dtype=np.uint8)
     painel[faixa_titulo:, :] = vis
-    cv2.putText(painel, titulo, (18, 38), cv2.FONT_HERSHEY_SIMPLEX,
-                0.78, (25, 25, 25), 2, cv2.LINE_AA)
+    cv2.putText(painel, titulo, (16, 28), cv2.FONT_HERSHEY_SIMPLEX,
+                0.55, (25, 25, 25), 1, cv2.LINE_AA)
     return painel
 
 
@@ -278,6 +278,17 @@ def _slug_painel(titulo: str) -> str:
     return f"{numero}_{slug}"
 
 
+def _juntar_com_espaco(imagens: list[np.ndarray], eixo: int, espaco: int = 10) -> np.ndarray:
+    """Concatena imagens no eixo dado com uma faixa branca de ``espaco`` px entre elas."""
+    forma = list(imagens[0].shape)
+    forma[eixo] = espaco
+    separador = np.full(forma, 255, dtype=imagens[0].dtype)
+    partes = [imagens[0]]
+    for img in imagens[1:]:
+        partes += [separador, img]
+    return np.concatenate(partes, axis=eixo)
+
+
 def salvar_figuras_etapas(r: dict[str, Any], nome_tile: str, saida_dir: str) -> None:
     """Salva as etapas do pipeline de um tile numa subpasta própria.
 
@@ -301,9 +312,10 @@ def salvar_figuras_etapas(r: dict[str, Any], nome_tile: str, saida_dir: str) -> 
     for (_, titulo, _), painel in zip(paineis, imagens):
         cv2.imwrite(os.path.join(etapas_dir, _slug_painel(titulo) + ".png"), painel)
 
-    # Grid: completa a última linha com painéis brancos para fechar em blocos de 3.
+    # Grid 4x3: completa a última linha com painéis brancos para fechar em blocos de 4,
+    # com 10 px de espaçamento branco entre os painéis.
     branco = np.full_like(imagens[0], 255)
-    celulas = imagens + [branco] * (-len(imagens) % 3)
-    linhas = [np.hstack(celulas[i:i + 3]) for i in range(0, len(celulas), 3)]
-    grid = np.vstack(linhas)
+    celulas = imagens + [branco] * (-len(imagens) % 4)
+    linhas = [_juntar_com_espaco(celulas[i:i + 4], eixo=1) for i in range(0, len(celulas), 4)]
+    grid = _juntar_com_espaco(linhas, eixo=0)
     cv2.imwrite(os.path.join(etapas_dir, "grid.png"), grid)

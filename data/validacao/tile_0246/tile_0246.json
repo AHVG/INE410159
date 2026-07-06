@@ -1,0 +1,11 @@
+{
+  "tile": "tile_0246.jpg",
+  "embaubas": [],
+  "n_candidatos": 41,
+  "n_deteccoes": 0,
+  "coverage_pct": 1.3453960418701172,
+  "tempo_s": 0.18697404861450195,
+  "memoria_mb": 64.05487251281738,
+  "falsos_positivos": [],
+  "faltantes": []
+}
