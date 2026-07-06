@@ -210,9 +210,9 @@ Resolução por tile & 2048 $\times$ 2048 px \\
 Sobreposição entre tiles & 512 px (25\%) \\
 Sistema de referência (CRS) & EPSG:31982 (UTM Zona 22S) \\
 Resolução espacial & $\approx$ 0,00848 u/px \\
-Tamanho aproximado em disco (\texttt{data/tiles}) & 899,0 MB \\
-Tiles pretos (fora da área mapeada) & 229 (ignorados automaticamente) \\
-Tiles efetivamente processados & 361 \\
+Tamanho aproximado em disco (\texttt{data/tiles}) & 1,4 GB \\
+Tiles pretos (fora da área mapeada) & 402 (ignorados automaticamente) \\
+Tiles efetivamente processados & 590 \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -247,7 +247,7 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=\textwidth]{../../data/output/pipeline_exemplo_filtro_classico.png}
+    \includegraphics[width=\textwidth]{../../data/output/tiles/tile_0681/grid.png}
     \caption{Visualização completa do pipeline clássico sobre
              \texttt{tile\_0681.jpg}: imagem original, suavização, canal H,
              máscara HSV bruta, fechamento, abertura, contornos por área mínima,
@@ -262,7 +262,7 @@ um tile amostrado.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_02.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/2_gaussian_blur_9x9.png}
     \caption{Imagem suavizada com filtro gaussiano.}
     \label{fig:etapa-blur}
 \end{figure}
@@ -280,7 +280,7 @@ filtro preserva a estrutura geral das copas, mas atenua detalhes muito pequenos.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_03.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/3_canal_h.png}
     \caption{Canal H extraído após a conversão para HSV.}
     \label{fig:etapa-hsv}
 \end{figure}
@@ -297,7 +297,7 @@ RGB, pois separa a informação de matiz da luminosidade.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_04.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/6_mascara_hsv_bruta.png}
     \caption{Máscara bruta produzida pela faixa HSV.}
     \label{fig:etapa-limiarizacao}
 \end{figure}
@@ -322,7 +322,7 @@ Pixels cujos valores HSV estão dentro desse intervalo recebem valor 255 na
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_05.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/7_close_25x25.png}
     \caption{Máscara após operações morfológicas, com regiões internas mais coesas.}
     \label{fig:etapa-close}
 \end{figure}
@@ -341,7 +341,7 @@ fragmentos próximos em regiões coesas que representam copas individuais.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_06.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/8_open_9x9.png}
     \caption{Máscara limpa após remoção de pequenos componentes.}
     \label{fig:etapa-open}
 \end{figure}
@@ -359,7 +359,7 @@ regiões maiores já consolidadas pelo fechamento.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_07.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/9_filtro_forma_tamanho.png}
     \caption{Regiões conectadas convertidas em candidatos desenhados sobre a imagem.}
     \label{fig:etapa-contornos}
 \end{figure}
@@ -377,7 +377,7 @@ contornos sem afetar a área estimada.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_07.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/9_filtro_forma_tamanho.png}
     \caption{Candidatos remanescentes após descarte de regiões pequenas.}
     \label{fig:etapa-area}
 \end{figure}
@@ -394,7 +394,7 @@ etapas morfológicas, mantendo apenas regiões compatíveis com copas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_08.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/9_filtro_forma_tamanho.png}
     \caption{Resultado final depois dos filtros de tamanho, circularidade e solidez.}
     \label{fig:etapa-filtro-final}
 \end{figure}
@@ -416,7 +416,7 @@ fragmentadas.
 
 \begin{figure}[H]
     \centering
-    \includegraphics[width=0.62\textwidth]{../../data/output/etapas_pipeline/tile_0681_09.png}
+    \includegraphics[width=0.62\textwidth]{../../data/output/tiles/tile_0681/10_convex_hull_final.png}
     \caption{Contorno final representado pelo fecho convexo da região detectada.}
     \label{fig:etapa-hull}
 \end{figure}
@@ -440,25 +440,25 @@ completo do dataset.
 
 \begin{table}[H]
 \centering
-\caption{Estatísticas do processamento completo (361 tiles).}
+\caption{Estatísticas do processamento completo (590 tiles).}
 \label{tab:stats}
 \begin{tabular}{ll}
 \toprule
 \textbf{Métrica} & \textbf{Valor} \\
 \midrule
-Tiles processados & 361 \\
-Tiles pretos ignorados & 229 \\
-Tiles com $\geq 1$ detecção & 311 (86,1\%) \\
-Total de detecções & 1.218 \\
-Detecções por tile & $3{,}37 \pm 2{,}78$ \\
-Área total estimada & 8.365,61 u² \\
-Área média por região & 95.522 px² \\
+Tiles processados & 590 \\
+Tiles pretos ignorados & 402 \\
+Tiles com $\geq 1$ detecção & 507 (85,9\%) \\
+Total de detecções & 2.003 \\
+Detecções por tile & $3{,}39 \pm 2{,}69$ \\
+Área total estimada & 13.164,42 u² \\
+Área média por região & 91.406 px² \\
 Área máxima por região & 599.406 px² \\
-Cobertura HSV média & 14,891\% \\
-Tempo total & 89,0 s \\
-Tempo médio por tile & $151{,}9 \pm 57{,}3$ ms \\
-Memória média por tile & 63,5 MB \\
-Memória de pico por tile & 64,4 MB \\
+Cobertura HSV média & 13,862\% \\
+Tempo total & 208,0 s \\
+Tempo médio por tile & $436{,}2 \pm 164{,}7$ ms \\
+Memória média por tile & 63,9 MB \\
+Memória de pico por tile & 64,5 MB \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -526,13 +526,13 @@ também podem refletir vegetação semelhante, sombras e regiões fundidas.
 tile\_0634.jpg & 13 & 1.027.336 & 73,87 & 25,04\% \\
 tile\_0666.jpg & 13 & 1.271.576 & 91,43 & 30,57\% \\
 tile\_0633.jpg & 12 &   796.373 & 57,26 & 20,03\% \\
+tile\_0328.jpg & 11 &   970.956 & 69,81 & 28,60\% \\
 tile\_0488.jpg & 11 & 1.224.788 & 88,07 & 29,33\% \\
-tile\_0634.jpg & 11 &   964.494 & 69,35 & 23,86\% \\
+tile\_0635.jpg & 11 &   964.494 & 69,35 & 23,86\% \\
 tile\_0753.jpg & 11 &   668.577 & 48,07 & 20,78\% \\
 tile\_0875.jpg & 11 &   819.124 & 58,90 & 21,62\% \\
-tile\_0435.jpg & 10 &   966.308 & 69,48 & 24,23\% \\
-tile\_0591.jpg & 10 & 1.072.664 & 77,13 & 29,15\% \\
-tile\_0721.jpg & 10 &   794.666 & 57,14 & 25,49\% \\
+tile\_0143.jpg & 10 &   854.036 & 61,41 & 19,45\% \\
+tile\_0175.jpg & 10 &   699.474 & 50,29 & 16,76\% \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -554,18 +554,18 @@ positivos e as caixas \texttt{faltantes} contam como falsos negativos.
 \midrule
 Tiles revisados & 35/35 \\
 Detecções avaliadas & 146 \\
-Verdadeiros positivos (TP) & 126 \\
-Falsos positivos (FP) & 20 \\
+Verdadeiros positivos (TP) & 124 \\
+Falsos positivos (FP) & 22 \\
 Falsos negativos / faltantes (FN) & 50 \\
-Precisão & 86,3\% \\
-Recall & 71,6\% \\
-F1 & 78,3\% \\
+Precisão & 84,9\% \\
+Recall & 71,3\% \\
+F1 & 77,5\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
-A precisão de 86,3\% indica que a maior parte das regiões detectadas corresponde
-a embaúba na amostra revisada. O recall de 71,6\% melhorou com a ampliação da
+A precisão de 84,9\% indica que a maior parte das regiões detectadas corresponde
+a embaúba na amostra revisada. O recall de 71,3\% melhorou com a ampliação da
 amostra, mas ainda mostra que o método perde copas reais, principalmente quando a
 segmentação HSV não produz um candidato inicial ou quando a copa aparece com
 iluminação e cor fora da faixa definida.
@@ -600,18 +600,18 @@ iluminação e cor fora da faixa definida.
     \label{fig:desempenho}
 \end{figure}
 
-O tempo médio de 151,9 ms por tile demonstra que o pipeline clássico permanece
-eficiente para inspeção em lote. O total de 361 tiles válidos foi processado em
-89,0 s, com uso de memória estável ($\sim$64 MB/tile), reflexo das operações
+O tempo médio de 436,2 ms por tile demonstra que o pipeline clássico permanece
+eficiente para inspeção em lote. O total de 590 tiles válidos foi processado em
+208,0 s, com uso de memória estável ($\sim$64 MB/tile), reflexo das operações
 matriciais do OpenCV que mantêm apenas a imagem corrente em memória. O passo a
 passo foi amostrado em tiles selecionados, reduzindo o custo de geração das
 figuras.
 
 \section{Interpretação e Limitações da Abordagem Clássica}
 
-\subsection{Alta taxa de tiles com detecções (86,1\%)}
+\subsection{Alta taxa de tiles com detecções (85,9\%)}
 
-O fato de 311 em 361 tiles apresentarem ao menos uma detecção sugere cobertura
+O fato de 507 em 590 tiles apresentarem ao menos uma detecção sugere cobertura
 ampla do mosaico por vegetação dentro da faixa HSV definida. Entretanto, esse
 número deve ser interpretado com cautela: o filtro HSV não é específico para
 \textit{Cecropia} — outras espécies com folhagem de tonalidade verde-clara
@@ -650,10 +650,10 @@ limiar de área máxima reduz agregações incompatíveis com uma copa individua
 
 \subsection{Leitura da Validação}
 
-A validação final mostra 126 verdadeiros positivos, 20 falsos positivos e 50
-falsos negativos em 35 tiles revisados. A precisão de 86,3\% indica que o filtro final de tamanho,
+A validação final mostra 124 verdadeiros positivos, 22 falsos positivos e 50
+falsos negativos em 35 tiles revisados. A precisão de 84,9\% indica que o filtro final de tamanho,
 circularidade e solidez reduziu bem os falsos positivos na amostra revisada. O
-recall de 71,6\%, por outro lado, mostra que parte das copas reais ainda não entra
+recall de 71,3\%, por outro lado, mostra que parte das copas reais ainda não entra
 na saída final, principalmente por dependerem de uma faixa HSV fixa.
 
 % ═════════════════════════════════════════════════════════════════════════════
@@ -1111,17 +1111,17 @@ resume as principais diferenças.
 Sinal explorado & Cor (faixa HSV) e forma (área, circularidade, solidez) & Padrões visuais aprendidos (cor, textura, forma) \\
 Anotação & Não requer (revisão manual só para validação) & Curadoria por exclusão sobre máscaras do SAM 3 \\
 Interpretabilidade & Alta: cada etapa é auditável & Baixa: decisão distribuída nos pesos da rede \\
-Custo computacional & Baixo ($\sim$152 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
+Custo computacional & Baixo ($\sim$436 ms/tile, CPU) & Alto (GPU; otimização + treino de 500 épocas) \\
 Segmentação de copa & Fecho convexo aproximado & Máscara do SAM 3 (polígono refinado) \\
 Discriminação de espécie & Fraca (confusão espectral) & Potencialmente alta (aprende contexto) \\
-Resultado & P 86,3\% / R 71,6\% / F1 78,3\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
+Resultado & P 84,9\% / R 71,3\% / F1 77,5\% & 1.226 indivíduos mapeados; taxa global 54,3\% \\
 \bottomrule
 \end{tabular}
 \end{table}
 
 A abordagem clássica é leve, transparente e não exige anotação, mas esbarra na
 confusão espectral: como diversas espécies caem na mesma faixa de verde, o recall
-fica limitado (71,6\%) e há fusão de copas próximas. A abordagem neural procura
+fica limitado (71,3\%) e há fusão de copas próximas. A abordagem neural procura
 justamente superar essa limitação, aprendendo padrões visuais que vão além da cor e
 delegando a segmentação fina ao SAM 3. Em contrapartida, exige infraestrutura de
 GPU, um ciclo de treinamento longo e uma etapa (ainda que reduzida) de curadoria.
@@ -1142,8 +1142,8 @@ experimento MataDIV.
 A \textbf{abordagem clássica} (Parte I) demonstrou ser viável para uma primeira
 estimativa da distribuição espacial da espécie: é eficiente, escalável por
 paralelismo e produz resultados interpretáveis pelas visualizações passo a passo.
-Foram detectadas 1.218 regiões em 361 tiles válidos, e a validação manual atingiu
-86,3\% de precisão e 71,6\% de recall. O filtro final reduz fortemente os falsos
+Foram detectadas 2.003 regiões em 590 tiles válidos, e a validação manual atingiu
+84,9\% de precisão e 71,3\% de recall. O filtro final reduz fortemente os falsos
 positivos, mas o recall limitado revela que a dependência de uma faixa HSV fixa
 deixa escapar copas reais.
 
