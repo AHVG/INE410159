@@ -22,7 +22,7 @@ usar deep learning: apenas `cv2`, `numpy` e `matplotlib`.
 
 ```
 .
-├── README.md  AGENTS.md  CLAUDE.md  index.md   # documentação
+├── README.md  AGENTS.md  CLAUDE.md   # documentação
 ├── dev.sh                                       # compila docs ou roda o projeto
 ├── .gitignore
 ├── src/                    # CÓDIGO
@@ -30,8 +30,6 @@ usar deep learning: apenas `cv2`, `numpy` e `matplotlib`.
 │   │   ├── deteccao.py     #     VC clássica + analisar(img) → bounds + métricas (saída canônica)
 │   │   ├── execucao.py     #     Processamento paralelo + gerenciador de checkpoint
 │   │   └── estatisticas.py #     Figuras estatísticas + relatório Markdown
-│   ├── ref/                #   Referência — NÃO usar como código do projeto
-│   │   └── embaubaHSVmask.py #   Script base original do professor — NÃO MODIFICAR/IMPORTAR
 │   ├── main.py             #   Entrada principal: output completo ou JSON por path
 │   └── anotar.py           #   UI OpenCV de validação (falsos positivos + faltantes)
 ├── docs/                   # DOCUMENTAÇÃO
@@ -54,8 +52,7 @@ O arquivo [`docs/relatorio/index.md`](docs/relatorio/index.md) define a estrutur
 
 ## Regras Importantes
 
-- **`src/ref/embaubaHSVmask.py` é intocável** — serve apenas como referência do algoritmo base.
-- Todo desenvolvimento acontece em `src/`, sem importar `src/ref/embaubaHSVmask.py`.
+- Todo o desenvolvimento acontece em `src/`.
 - Não usar deep learning — apenas `cv2`, `numpy`, `matplotlib`.
 - Não adicionar comentários óbvios; só quando o motivo não é evidente.
 

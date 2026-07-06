@@ -24,9 +24,3 @@ python3 src/anotar.py data/validacao --resumo             # métricas do conjunt
 | `core/deteccao.py` | Pipeline de visão computacional clássica: Gaussian Blur → segmentação HSV → morfologia (close/open) → extração de contornos → classificação por área, circularidade e solidez. Exporta `detectar()`, `analisar()` e `salvar_passo_a_passo()`. |
 | `core/execucao.py` | Processamento paralelo com `multiprocessing.Pool` e gerência de checkpoints. Grava estado parcial a cada 50 tiles para permitir retomada de runs interrompidas. |
 | `core/estatisticas.py` | Geração de figuras estatísticas (histogramas, cobertura HSV, tempo/memória) e do `data/output/relatorio.md`. |
-
-## Referência (`ref/`)
-
-| Arquivo | Descrição |
-|---------|-----------|
-| `ref/embaubaHSVmask.py` | Script base original do professor. **Não modificar e não importar.** Serve apenas como referência do algoritmo de partida. |

@@ -11,11 +11,72 @@ O relatório final que integra as duas soluções fica em
 
 | Arquivo | Descrição |
 |---------|-----------|
+| `codigo/` | Scripts Python do pipeline SAM 3 + YOLOv8 (ver seção [Código](#código-codigo)). |
 | `sam3_yolo_detection.pdf` | PDF original da frente neural (fonte imutável). |
 | `relatorio.md` | Transcrição editável do texto do PDF e síntese dos resultados disponíveis. |
 | `figuras/` | Imagens referenciadas no texto e figuras quantitativas geradas. |
 | `resultados/` | CSVs, relatório automático e métricas consolidadas por parcela/composição. |
 | `index.md` | Este arquivo. |
+
+## Código (`codigo/`)
+
+Scripts Python que implementam o pipeline semi-automatizado **SAM 3 + YOLOv8** que
+produziu os resultados desta pasta. São numerados na ordem de execução e usam
+`transformers` (SAM 3), `ultralytics` (YOLOv8), `optuna`, `scikit-learn` e a pilha
+geoespacial (`rasterio`, `geopandas`, `shapely`). **Não rodam neste repositório**:
+dependem do ortomosaico georreferenciado, de GPU e dos pesos dos modelos — servem
+como registro reprodutível do método descrito no `sam3_yolo_detection.pdf`.
+
+O pipeline segue seis etapas (os scripts abaixo cobrem o método do PDF; a divisão
+espacial em si — clusterização por grafo/BFS + Monte Carlo — gera os shapefiles de
+*split* consumidos por `02`, mas não tem script dedicado nesta pasta):
+
+**1. Geração e preparação do dataset (SAM 3 + curadoria)**
+
+| Script | Função |
+|--------|--------|
+| `00_corte_orto_mask_SAM3.py` | Recorta o ortomosaico em tiles e roda o SAM 3 por *text prompt* (`"tree"`), exportando as copas candidatas como *shapefile*. |
+| `01_split_labels.py` | Cria os vetores (*bounding boxes*) de recorte dos tiles a partir dos polígonos rotulados e filtra geometrias inválidas. |
+| `02_create_dataset_model.py` | Recorta as imagens e os *labels* dos tiles para os conjuntos train/val/test a partir dos *shapefiles* de *split* (rasterio/geopandas). |
+
+**3. Correção semi-automatizada das anotações**
+
+| Script | Função |
+|--------|--------|
+| `08_encontrar_nao_anotadas_val.py` | Aplica o modelo na validação e sinaliza detecções sem anotação (IoU < 0,5) para revisão. |
+| `09_encontrar_nao_anotadas_test.py` | Idem para o conjunto de teste. |
+| `10_merge_labels_val.py` / `10_merge_labels_test.py` | Incorporam as anotações confirmadas aos labels (com backup e limpeza de cache). |
+
+**4. Treinamento do YOLOv8x**
+
+| Script | Função |
+|--------|--------|
+| `03_bayesian_optimization.py` | Otimização bayesiana de hiperparâmetros (Optuna/TPESampler, 30 tentativas). |
+| `04_bayesian_analysis.py` | Analisa as tentativas e estima a importância dos hiperparâmetros (Random Forest / MDI). |
+| `05_training_and_testing_model_AdamW_v2.py` | Treino final do YOLOv8x (AdamW) com os labels corrigidos. |
+
+**5. Inferência e pós-processamento**
+
+| Script | Função |
+|--------|--------|
+| `06_inference_and_postprocess_final_v2.py` | Inferência do YOLOv8x em duas rodadas (grade + *offset* 50%), georreferência, deduplicação e cruzamento com as máscaras SAM 3 (3 categorias). |
+| `11_pos_processamento_inferencia.py` | Filtra as detecções por confiança e área (remove *bbox* grande com baixa confiança e *bbox* muito pequeno) e exporta GPKG/SHP limpos. |
+
+**6. Segmentação das copas por *bbox prompt* (SAM 3)**
+
+| Script | Função |
+|--------|--------|
+| `12_recortar_bbox_ortomosaico.py` | Recorta do ortomosaico a região de cada *bounding box* detectada (com *padding*). |
+| `15a_sam3_bbox_prompt.py` | Segmenta as copas com SAM 3 usando a *bbox* como *prompt* geométrico. |
+| `15b_sam2_bbox_prompt.py` | Variante com SAM 2 para comparação. |
+| `15_comparacao_sam2_sam3_bbox.py` | Compara a segmentação por *bbox prompt* entre SAM 2 e SAM 3. |
+| `16_teste_sistematico_sam3_bbox_cropsize.py` | Varredura sistemática do tamanho de recorte (*crop size*) no SAM 3 por *bbox*. |
+
+**Consolidação dos resultados**
+
+| Script | Função |
+|--------|--------|
+| `contagem_completa.py` | Contagem final de indivíduos por parcela/composição, base dos CSVs e figuras em `resultados/` e `figuras/`. |
 
 ## Estado do material
 
